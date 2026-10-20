@@ -38,9 +38,9 @@ export default function ShowList({ shows }: { shows: Show[] }) {
     <div className="mx-auto max-w-4xl pb-10">
       <header className="sticky top-11 z-30 border-b border-line bg-bg">
         <div className="flex items-center gap-3 px-4 py-3">
-          <button onClick={reset} aria-label="뮤킷 홈" className="flex shrink-0 items-baseline gap-1">
-            <span className="font-serif text-2xl font-bold text-brand">뮤킷</span>
-            <span className="text-[11px] font-medium text-mute">Myukit</span>
+          <button onClick={reset} aria-label="JJabKit 홈" className="flex shrink-0 items-baseline gap-1">
+            <span className="font-serif text-2xl font-bold text-brand">JJabKit</span>
+            <span className="text-[11px] font-medium text-mute">짭킷</span>
           </button>
           <div className="relative min-w-0 flex-1">
             <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-mute"><Search size={16} aria-hidden /></span>

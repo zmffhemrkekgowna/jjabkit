@@ -1,4 +1,4 @@
-# 뮤킷 (Myukit) — 최종 통합본
+# JJabKit (짭킷) — 최종 통합본
 
 뮤지컬·연극 캐스팅 스케줄 앱이에요. Next.js 15 + Tailwind CSS 3 + Supabase(PostgreSQL, Auth, Storage)로 만들었어요.
 
@@ -63,7 +63,7 @@ components/
   ads/                          AdSenseBanner(반응형 배너), AdSenseScript(스크립트 로더), SponsorPopup(제휴 팝업)
 lib/
   auth.ts                       서버에서 방문자 상태 확인(getAuthState: is_admin() 결과)
-  favorites.tsx                 하트 저장(localStorage, 키 myukit-fav-v1)
+  favorites.tsx                 하트 저장(localStorage, 키 jjabkit-fav-v1)
   casting.ts, events.ts, mySchedule.ts
   notices.ts, db/notices.ts     소식: 새 소식 판단(localStorage), DB 조회·저장
   calendarImage.ts              달력 PNG 그리기(canvas) + 화면별 그릴 내용 만들기
@@ -113,7 +113,7 @@ docs/PERMISSIONS.md             권한·데이터 관리 구조
 - 광고 높이를 미리 잡아 두어 늦게 떠도 화면이 밀리지 않아요. 한 번만 `push({})` 하도록 막아 두었어요.
 
 **제휴 팝업**
-- 오른쪽 위 **X**와 **닫기** 버튼, Esc, 바깥 클릭은 "이번만 닫기"예요. **오늘 하루 동안 보지 않기**를 누르면 24시간(LocalStorage 키 `myukit-sponsor-hide-until`) 동안 다시 안 떠요.
+- 오른쪽 위 **X**와 **닫기** 버튼, Esc, 바깥 클릭은 "이번만 닫기"예요. **오늘 하루 동안 보지 않기**를 누르면 24시간(LocalStorage 키 `jjabkit-sponsor-hide-until`) 동안 다시 안 떠요.
 - `SPONSORS`의 예시 항목(가상의 제작사)을 실제 제휴처로 바꿔요. `image`에 포스터 이미지 주소를 넣으면 그 이미지를, 비우면 그라데이션 포스터를 보여줘요. 링크에는 `rel="sponsored"`가 붙어요.
 
 **운영 전에 꼭 확인하세요 (코드로 해결되지 않는 부분)**
@@ -124,7 +124,7 @@ docs/PERMISSIONS.md             권한·데이터 관리 구조
 ## 업데이트·소식, 이미지 저장·공유, 백업·복구
 
 **소식 (What's New)**
-- 상단 막대의 종 아이콘을 누르면 소식 모달이 열려요. 마지막으로 열어 본 뒤에 올라온 소식이 있으면 아이콘에 **N** 배지가 떠요. (열어 본 시각은 이 브라우저의 localStorage `myukit-notice-seen`에 저장돼요. 처음 방문하면 올라와 있는 소식이 모두 새 소식이에요.)
+- 상단 막대의 종 아이콘을 누르면 소식 모달이 열려요. 마지막으로 열어 본 뒤에 올라온 소식이 있으면 아이콘에 **N** 배지가 떠요. (열어 본 시각은 이 브라우저의 localStorage `jjabkit-notice-seen`에 저장돼요. 처음 방문하면 올라와 있는 소식이 모두 새 소식이에요.)
 - 관리자 화면 > **소식·공지** 탭에서 등록·수정·삭제해요. 종류(신규 공연, 스케줄 변경, 업데이트, 공지), 연결할 공연(선택), 맨 위 고정을 고를 수 있어요. 공연 관리 탭의 **이 공연 소식 쓰기** 버튼을 누르면 그 공연이 연결된 초안이 채워져요. 자동으로 올라가지는 않아요. 직접 써서 올려요.
 - 본문은 글자 그대로 보여줘요(HTML을 해석하지 않아서 스크립트가 들어가도 실행되지 않아요). 제목 100자, 본문 2000자까지.
 - 저장: Supabase `notices` 표. 읽기는 누구나, 쓰기는 관리자만(RLS). 소식을 못 불러와도 다른 화면은 그대로 떠요.

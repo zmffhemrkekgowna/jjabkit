@@ -1,6 +1,6 @@
 import type { Notice } from "@/types/notice";
 
-export const NOTICE_SEEN_KEY = "myukit-notice-seen";
+export const NOTICE_SEEN_KEY = "jjabkit-notice-seen";
 /** 시각 비교는 문자열이 아니라 숫자로 해요. (DB가 소수점 자릿수를 다르게 돌려줄 수 있어요) */
 const ts = (iso: string) => Date.parse(iso) || 0;
 

@@ -5,7 +5,7 @@ import type { Genre, Show, Status } from "@/types/show";
  * 화면용 id(uuid)는 담지 않고, 배역·배우를 "이름"으로 이어요. 그래서 다른 DB로 옮겨도 그대로 복구돼요.
  * 포스터 이미지는 파일이 아니라 주소(URL)만 담겨요.
  */
-export const BACKUP_APP = "myukit";
+export const BACKUP_APP = "jjabkit";
 export const BACKUP_VERSION = 1;
 export const MAX_FILE_BYTES = 5 * 1024 * 1024;
 export const LIMITS = { shows: 200, roles: 20, actors: 50, sessions: 2000, text: 200, url: 2000 } as const;
@@ -44,7 +44,7 @@ export function buildBackup(shows: Show[], now = new Date()): BackupFile {
 
 export const backupFileName = (now = new Date()) => {
   const p = (n: number) => String(n).padStart(2, "0");
-  return `myukit-backup-${now.getFullYear()}${p(now.getMonth() + 1)}${p(now.getDate())}-${p(now.getHours())}${p(now.getMinutes())}.json`;
+  return `jjabkit-backup-${now.getFullYear()}${p(now.getMonth() + 1)}${p(now.getDate())}-${p(now.getHours())}${p(now.getMinutes())}.json`;
 };
 
 /* ───────── 불러오기 검증 ───────── */
@@ -67,8 +67,8 @@ function validDate(s: string): boolean {
 export function parseBackup(text: string): ParseResult {
   if (text.length > MAX_FILE_BYTES) return { ok: false, errors: ["파일이 너무 커요. (5MB 이하만 불러올 수 있어요)"] };
   let raw: unknown;
-  try { raw = JSON.parse(text); } catch { return { ok: false, errors: ["JSON 형식이 아니에요. 뮤킷에서 내보낸 파일이 맞는지 확인해 주세요."] }; }
-  if (!isObj(raw) || raw.app !== BACKUP_APP) return { ok: false, errors: ["뮤킷 백업 파일이 아니에요."] };
+  try { raw = JSON.parse(text); } catch { return { ok: false, errors: ["JSON 형식이 아니에요. JJabKit에서 내보낸 파일이 맞는지 확인해 주세요."] }; }
+  if (!isObj(raw) || raw.app !== BACKUP_APP && raw.app !== "myukit") return { ok: false, errors: ["JJabKit 백업 파일이 아니에요."] };
   if (raw.version !== BACKUP_VERSION) return { ok: false, errors: [`지원하지 않는 버전이에요. (파일 버전: ${String(raw.version)}, 지원: ${BACKUP_VERSION})`] };
   if (!Array.isArray(raw.shows)) return { ok: false, errors: ["공연 목록(shows)이 없어요."] };
   if (raw.shows.length > LIMITS.shows) return { ok: false, errors: [`공연은 한 번에 ${LIMITS.shows}개까지 불러올 수 있어요.`] };

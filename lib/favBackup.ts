@@ -7,19 +7,19 @@ export const FAV_VERSION = 1;
 export const FAV_MAX_BYTES = 1024 * 1024;
 const MAX_ITEMS = 500;
 
-export interface FavBackupFile { app: "myukit"; kind: typeof FAV_KIND; version: number; exportedAt: string; shows: { id: string; title: string }[]; actors: string[] }
+export interface FavBackupFile { app: "jjabkit"; kind: typeof FAV_KIND; version: number; exportedAt: string; shows: { id: string; title: string }[]; actors: string[] }
 interface ShowRef { id: string; title: string }
 
 export function buildFavBackup(shows: ShowRef[], favShows: Set<string>, favActors: Set<string>, now = new Date()): FavBackupFile {
   return {
-    app: "myukit", kind: FAV_KIND, version: FAV_VERSION, exportedAt: now.toISOString(),
+    app: "jjabkit", kind: FAV_KIND, version: FAV_VERSION, exportedAt: now.toISOString(),
     shows: shows.filter((s) => favShows.has(s.id)).map((s) => ({ id: s.id, title: s.title })),
     actors: [...favActors],
   };
 }
 export const favBackupFileName = (now = new Date()) => {
   const p = (n: number) => String(n).padStart(2, "0");
-  return `myukit-hearts-${now.getFullYear()}${p(now.getMonth() + 1)}${p(now.getDate())}.json`;
+  return `jjabkit-hearts-${now.getFullYear()}${p(now.getMonth() + 1)}${p(now.getDate())}.json`;
 };
 
 export type FavParse =
@@ -32,8 +32,8 @@ const isObj = (v: unknown): v is Record<string, unknown> => typeof v === "object
 export function parseFavBackup(text: string, known: ShowRef[]): FavParse {
   if (text.length > FAV_MAX_BYTES) return { ok: false, error: "파일이 너무 커요." };
   let raw: unknown;
-  try { raw = JSON.parse(text); } catch { return { ok: false, error: "JSON 형식이 아니에요. 뮤킷에서 내려받은 하트 백업 파일이 맞는지 확인해 주세요." }; }
-  if (!isObj(raw) || raw.app !== "myukit") return { ok: false, error: "뮤킷 백업 파일이 아니에요." };
+  try { raw = JSON.parse(text); } catch { return { ok: false, error: "JSON 형식이 아니에요. JJabKit에서 내려받은 하트 백업 파일이 맞는지 확인해 주세요." }; }
+  if (!isObj(raw) || raw.app !== "jjabkit" && raw.app !== "myukit") return { ok: false, error: "JJabKit 백업 파일이 아니에요." };
   if (raw.kind !== FAV_KIND) return { ok: false, error: "이 파일은 하트 백업이 아니에요. (공연 데이터 백업은 관리자 화면에서 불러와요)" };
   if (raw.version !== FAV_VERSION) return { ok: false, error: `지원하지 않는 버전이에요. (파일 버전: ${String(raw.version)})` };
   if (!Array.isArray(raw.shows) || !Array.isArray(raw.actors)) return { ok: false, error: "관심 공연·관심 배우 목록이 없어요." };

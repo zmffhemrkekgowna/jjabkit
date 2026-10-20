@@ -10,7 +10,7 @@ import { getAuthState } from "@/lib/auth";
 import { fetchNoticesSafe } from "@/lib/db/notices";
 import { createClient } from "@/lib/supabase/server";
 
-export const metadata: Metadata = { title: "뮤킷 Myukit", description: "뮤지컬·연극 캐스팅 스케줄" };
+export const metadata: Metadata = { title: "JJabKit - 짭킷", description: "뮤지컬·연극 캐스팅 스케줄", openGraph: { title: "JJabKit - 짭킷", description: "뮤지컬·연극 캐스팅 스케줄", siteName: "JJabKit", type: "website" } };
 
 export default async function RootLayout({ children }: { children: ReactNode }) {
   const { isAdmin } = await getAuthState();

@@ -4,7 +4,7 @@ import { fetchShows } from "@/lib/db/shows";
 import { createClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "데이터 백업 · 뮤킷" };
+export const metadata = { title: "데이터 백업 · JJabKit" };
 
 export default async function BackupRoute() {
   const [{ isAdmin }, shows] = await Promise.all([getAuthState(), fetchShows(await createClient())]);

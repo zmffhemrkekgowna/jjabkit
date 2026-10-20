@@ -14,7 +14,7 @@ export const isValidSlot = (v: string) => /^\d{5,15}$/.test(v);
 
 /* ───────── 스폰서십 팝업: "오늘 하루 동안 보지 않기" ───────── */
 
-export const SPONSOR_HIDE_KEY = "myukit-sponsor-hide-until";
+export const SPONSOR_HIDE_KEY = "jjabkit-sponsor-hide-until";
 export const DAY_MS = 24 * 60 * 60 * 1000;
 
 /** 저장된 숨김 만료 시각이 아직 안 지났으면 true. localStorage를 못 쓰면 false(=보여줘요). */

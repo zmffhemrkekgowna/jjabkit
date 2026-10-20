@@ -41,7 +41,7 @@ export function castingSpec(showTitle: string, idx: ShowIndex, cursor: Date, sel
     title: showTitle,
     subtitle: `${cursor.getFullYear()}년 ${cursor.getMonth() + 1}월 캐스팅 · ${names.length ? `선택한 배우: ${names.join(", ")}` : "전체 회차"}`,
     weeks: chunk(cells, 7), dimOthers: sel.size > 0 && !only,
-    footer: "★ 커튼콜 데이   % 타임세일   ·   myukit",
+    footer: "★ 커튼콜 데이   % 타임세일   ·   jjabkit",
   };
 }
 
@@ -65,7 +65,7 @@ export function mySchedSpec(items: MyItem[], cursor: Date, names: string[]): Img
     title: "내 관심 배우 일정",
     subtitle: `${cursor.getFullYear()}년 ${cursor.getMonth() + 1}월 · ${names.join(", ")}`,
     weeks: chunk(cells, 7), dimOthers: false,
-    footer: "★ 커튼콜 데이   % 타임세일   ·   myukit",
+    footer: "★ 커튼콜 데이   % 타임세일   ·   jjabkit",
   };
 }
 

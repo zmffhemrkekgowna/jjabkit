@@ -68,7 +68,7 @@ export default function BackupPanel({ shows }: { shows: Show[] }) {
       </Sec>
 
       <Sec title="백업 불러오기 (JSON)">
-        <p className="text-sm text-mute">뮤킷에서 내려받은 JSON 파일(버전 {BACKUP_VERSION})만 불러올 수 있어요. 파일 내용은 먼저 검사하고, 문제가 있으면 아무것도 바꾸지 않아요.</p>
+        <p className="text-sm text-mute">JJabKit에서 내려받은 JSON 파일(버전 {BACKUP_VERSION})만 불러올 수 있어요. 파일 내용은 먼저 검사하고, 문제가 있으면 아무것도 바꾸지 않아요.</p>
         <input ref={file} type="file" accept="application/json,.json" aria-label="백업 JSON 파일 선택" onChange={(e) => pickFile(e.target.files?.[0])}
           className="mt-3 block w-full text-sm file:mr-3 file:rounded-lg file:border file:border-line file:bg-card file:px-3 file:py-2 file:text-sm" />
 

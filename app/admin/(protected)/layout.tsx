@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 import { getAuthState } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "공연 관리 · 뮤킷", robots: { index: false, follow: false } }; // 검색에 나오지 않게
+export const metadata = { title: "공연 관리 · JJabKit", robots: { index: false, follow: false } }; // 검색에 나오지 않게
 
 /**
  * 관리자 화면의 두 번째 잠금장치 (첫 번째는 middleware.ts).

@@ -18,7 +18,7 @@
 
 ## 2. Vercel 배포
 
-1. `myukit-app` 폴더를 GitHub 저장소에 올려요. `.env.local`은 `.gitignore`에 들어 있어서 올라가지 않아요.
+1. `jjabkit-app` 폴더를 GitHub 저장소에 올려요. `.env.local`은 `.gitignore`에 들어 있어서 올라가지 않아요.
 2. Vercel에서 새 프로젝트를 만들고 그 저장소를 가져와요. Next.js는 자동으로 인식돼요.
 3. Environment Variables에 아래 두 개를 넣어요.
 

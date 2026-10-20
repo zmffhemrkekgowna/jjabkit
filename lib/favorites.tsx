@@ -3,7 +3,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 
 /** 관심 공연은 공연 id, 관심 배우는 이름으로 저장해요. (같은 배우가 여러 공연에 나와도 한 번에 모아볼 수 있어요) */
-const KEY = "myukit-fav-v1";
+const KEY = "jjabkit-fav-v1";
 interface Stored { shows: Set<string>; actors: Set<string> }
 interface Favorites extends Stored {
   ready: boolean;
@@ -18,7 +18,7 @@ interface Favorites extends Stored {
 const empty = (): Stored => ({ shows: new Set(), actors: new Set() });
 function read(): Stored {
   try {
-    const v = JSON.parse(localStorage.getItem(KEY) ?? "{}");
+    const v = JSON.parse(localStorage.getItem(KEY) ?? localStorage.getItem("myukit-fav-v1") ?? "{}");
     return { shows: new Set<string>(v.shows ?? []), actors: new Set<string>(v.actors ?? []) };
   } catch {
     return empty();

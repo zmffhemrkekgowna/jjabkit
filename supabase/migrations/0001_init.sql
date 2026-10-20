@@ -1,4 +1,4 @@
--- 뮤킷 개인용 스키마: 공연 / 배역 / 배우 / 회차 / 회차별 캐스팅
+-- JJabKit 개인용 스키마: 공연 / 배역 / 배우 / 회차 / 회차별 캐스팅
 -- Supabase는 PostgreSQL 15 이상을 쓰므로 복합 외래키의 ON DELETE SET NULL (컬럼) 문법을 사용해요.
 
 create table public.shows (
