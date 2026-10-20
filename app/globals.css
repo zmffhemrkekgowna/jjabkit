@@ -1,0 +1,16 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root { --bg:#F4F4F9; --card:#FFFFFF; --ink:#1B1A22; --mute:#6A6877; --line:#E3E1EA; --brand:#8B1E3F; --onbrand:#FFFFFF; --hit:#FBE8EE; --gold:#A9761A; --ongold:#FFFFFF; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) { --bg:#0E0D14; --card:#17161F; --ink:#F1EFF6; --mute:#9A98AA; --line:#2A2833; --brand:#E0577F; --onbrand:#1B0A12; --hit:#2A1520; --gold:#D9A441; --ongold:#1B1204; }
+}
+:root[data-theme="dark"] { --bg:#0E0D14; --card:#17161F; --ink:#F1EFF6; --mute:#9A98AA; --line:#2A2833; --brand:#E0577F; --onbrand:#1B0A12; --hit:#2A1520; --gold:#D9A441; --ongold:#1B1204; }
+
+body { background: var(--bg); color: var(--ink); font-family: "Noto Sans KR", system-ui, -apple-system, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif; -webkit-font-smoothing: antialiased; }
+button, input, select { font-family: inherit; }
+button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+@keyframes sheet-up { from { transform: translateY(100%); } to { transform: none; } }
+.sheet { animation: sheet-up 0.22s ease-out; }
+@media (prefers-reduced-motion: reduce) { .sheet { animation: none; } }
