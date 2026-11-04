@@ -1,7 +1,7 @@
 "use client";
 
 import { actorOf, addDays, fmtDate, matches, toKey, visibleOn, weekStart, type ShowIndex } from "@/lib/casting";
-import { CurtainTag, TimeSaleTag } from "../ui/Tags";
+import { CurtainTag } from "../ui/Tags";
 
 interface Props { idx: ShowIndex; cursor: Date; sel: Set<string>; only: boolean; onOpen: (date: string, sid?: string) => void }
 
@@ -25,7 +25,7 @@ export default function WeekView({ idx, cursor, sel, only, onOpen }: Props) {
                     className={`rounded-xl border p-3 text-left ${ok ? "border-brand bg-hit" : "border-line bg-card"} ${sel.size > 0 && !ok ? "opacity-50" : ""}`}>
                     <div className="mb-1.5 flex flex-wrap items-center gap-1.5">
                       <span className="font-bold tabular-nums">{s.time}</span>
-                      {s.curtain && <CurtainTag />}{s.timesale && <TimeSaleTag />}
+                      {s.curtain && <CurtainTag />}
                     </div>
                     <div className="grid grid-cols-2 gap-x-3 gap-y-0.5 text-sm">
                       {idx.roles.map((r) => {

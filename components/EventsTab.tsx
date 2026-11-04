@@ -1,14 +1,33 @@
 "use client";
 
-import { Calendar, GraduationCap, Heart, Percent, Star, Users, Clock } from "lucide-react";
+import { Calendar, GraduationCap, Heart, Star, Users, Clock } from "lucide-react";
 import type { Show } from "@/types/show";
 import { fmtDate, fromKey, type ShowIndex } from "@/lib/casting";
+import type { EventItem } from "@/types/event";
+import { periodText } from "@/lib/period";
+import { isHex6 } from "@/lib/color";
 import { buildEvents, type EventIcon } from "@/lib/events";
 
-const ICONS: Record<EventIcon, typeof Clock> = { clock: Clock, cap: GraduationCap, star: Star, pct: Percent, heart: Heart, users: Users };
+const ICONS: Record<EventIcon, typeof Clock> = { clock: Clock, cap: GraduationCap, star: Star, heart: Heart, users: Users };
 
-export default function EventsTab({ show, idx, onOpen }: { show: Show; idx: ShowIndex; onOpen: (date: string) => void }) {
+export default function EventsTab({ show, idx, events = [], onOpen, onOpenEvent }: { show: Show; idx: ShowIndex; events?: EventItem[]; onOpen: (date: string) => void; onOpenEvent?: (e: EventItem) => void }) {
   return (
+    <div className="space-y-4">
+    {events.length > 0 && (
+      <section aria-label="등록된 이벤트">
+        <h2 className="mb-2 text-sm font-bold">이벤트 <span className="font-normal text-mute">{events.length}</span></h2>
+        <ul className="space-y-2">
+          {events.map((e) => (
+            <li key={e.id}>
+              <button onClick={() => onOpenEvent?.(e)} className="block w-full rounded-2xl border border-line bg-card p-3 text-left hover:border-brand">
+                <span className="flex items-center gap-1.5 text-sm font-bold">{isHex6(e.color) && <span aria-hidden className="inline-block h-3 w-3 shrink-0 rounded-full border border-line" style={{ background: e.color }} />}{e.title}</span>
+                <span className="mt-1 flex items-center gap-1 text-xs text-mute"><Calendar size={12} aria-hidden />{periodText(e)}</span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      </section>
+    )}
     <div className="grid gap-3 sm:grid-cols-2">
       {buildEvents(show, idx).map((e) => {
         const Icon = ICONS[e.icon];
@@ -38,6 +57,7 @@ export default function EventsTab({ show, idx, onOpen }: { show: Show; idx: Show
           </article>
         );
       })}
+    </div>
     </div>
   );
 }

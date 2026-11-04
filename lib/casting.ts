@@ -12,12 +12,6 @@ const dots = (t: string) => t.replace(/-/g, ".");
 export const period = (s: Pick<Show, "start" | "end">) =>
   `${s.start ? dots(s.start) : "미정"} ~ ${s.end ? dots(s.end.slice(5)) : "미정"}`;
 
-export const SITES = [
-  ["인터파크", "https://tickets.interpark.com"],
-  ["YES24", "https://ticket.yes24.com"],
-  ["멜론티켓", "https://ticket.melon.com"],
-] as const;
-
 export interface ActorInfo { id: string; n: string; roleId: string }
 const UNKNOWN: ActorInfo = { id: "", n: "미정", roleId: "" };
 
@@ -29,7 +23,6 @@ export interface ShowIndex {
   start: Date;
   end: Date;
   curtainDates: string[];
-  timesaleCount: number;
 }
 
 /** 공연 데이터를 화면에서 쓰기 좋게 한 번만 가공해요. */
@@ -45,7 +38,6 @@ export function buildIndex(show: Show): ShowIndex {
     roles: show.roles, sessions, byDate, actors,
     start: fromKey(first), end: fromKey(ds[ds.length - 1] ?? first),
     curtainDates: [...new Set(sessions.filter((s) => s.curtain).map((s) => s.date))],
-    timesaleCount: sessions.filter((s) => s.timesale).length,
   };
 }
 
@@ -66,3 +58,13 @@ export function visibleOn(idx: ShowIndex, dateKey: string, sel: Set<string>, onl
   const all = idx.byDate.get(dateKey) ?? [];
   return only && sel.size > 0 ? all.filter((s) => matches(idx, s, sel)) : all;
 }
+
+/** 필터를 반영한 회차 목록(날짜·시간순). */
+const filtered = (idx: ShowIndex, sel: Set<string>) => idx.sessions.filter((s) => matches(idx, s, sel));
+
+/** 지금(KST, 'YYYY-MM-DD HH:mm') 이후 가장 가까운 회차. 필터가 있으면 조건에 맞는 회차만 봐요. 없으면 null. */
+export function nextSession(idx: ShowIndex, nowKst: string, sel: Set<string>): Session | null {
+  return filtered(idx, sel).find((s) => `${s.date} ${s.time}` >= nowKst) ?? null;
+}
+export const firstSession = (idx: ShowIndex, sel: Set<string>): Session | null => filtered(idx, sel)[0] ?? null;
+export const lastSession = (idx: ShowIndex, sel: Set<string>): Session | null => { const l = filtered(idx, sel); return l[l.length - 1] ?? null; };

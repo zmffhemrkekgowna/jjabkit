@@ -12,58 +12,36 @@ export const ADSENSE_SLOT_DETAIL = process.env.NEXT_PUBLIC_ADSENSE_SLOT_DETAIL ?
 export const isValidClient = (v: string) => /^ca-pub-\d{10,20}$/.test(v);
 export const isValidSlot = (v: string) => /^\d{5,15}$/.test(v);
 
-/* ───────── 스폰서십 팝업: "오늘 하루 동안 보지 않기" ───────── */
+/* ───────── 팝업 광고: "오늘 하루 동안 보지 않기" ─────────
+ * 팝업은 관리자 화면(팝업 광고 탭)에서 여러 개 등록해요. 숨김은 팝업마다 따로 기억해요.
+ * 저장 형태: { "<팝업 id>": 숨김이 끝나는 시각(ms) } — 새 팝업을 올리면 그것만 다시 떠요. */
 
-export const SPONSOR_HIDE_KEY = "jjabkit-sponsor-hide-until";
+export const POPUP_HIDE_KEY = "jjabkit-popup-hide-v1";
 export const DAY_MS = 24 * 60 * 60 * 1000;
 
-/** 저장된 숨김 만료 시각이 아직 안 지났으면 true. localStorage를 못 쓰면 false(=보여줘요). */
-export function isSponsorHidden(now = Date.now()): boolean {
+function readHidden(): Record<string, number> {
   try {
-    const raw = window.localStorage.getItem(SPONSOR_HIDE_KEY);
-    const until = raw ? Number(raw) : 0;
-    return Number.isFinite(until) && until > now;
+    const v = JSON.parse(window.localStorage.getItem(POPUP_HIDE_KEY) ?? "{}");
+    return v && typeof v === "object" && !Array.isArray(v) ? (v as Record<string, number>) : {};
   } catch {
-    return false;
+    return {}; // localStorage를 못 쓰면 숨김 없음(=보여줘요)
   }
 }
 
-/** 지금부터 24시간 동안 팝업을 숨겨요. */
-export function hideSponsorForToday(now = Date.now()): void {
+/** 아직 숨김 기간 안인 팝업 id가 아닌 것만 남겨요. */
+export function visiblePopupIds(ids: string[], now = Date.now()): string[] {
+  const h = readHidden();
+  return ids.filter((id) => !(Number(h[id]) > now));
+}
+
+/** 주어진 팝업들을 지금부터 24시간 숨겨요. 지난 기록은 같이 정리해요. */
+export function hidePopupsForToday(ids: string[], now = Date.now()): void {
   try {
-    window.localStorage.setItem(SPONSOR_HIDE_KEY, String(now + DAY_MS));
+    const h = readHidden();
+    for (const k of Object.keys(h)) if (!(Number(h[k]) > now)) delete h[k];
+    for (const id of ids) h[id] = now + DAY_MS;
+    window.localStorage.setItem(POPUP_HIDE_KEY, JSON.stringify(h));
   } catch {
     /* 저장이 막힌 환경이면 이번 방문에서만 닫혀요 */
   }
 }
-
-/* ───────── 제휴 제작사 배너 데이터 ─────────
- * 아래 항목은 모양을 보여주려는 가상의 예시예요. 실제 제휴처로 바꿔 쓰세요.
- * image 에 포스터 이미지 주소를 넣으면 그 이미지를, 비우면 그라데이션 포스터를 보여줘요. */
-
-export type Sponsor = {
-  id: string;
-  producer: string;
-  title: string;
-  tagline: string;
-  period: string;
-  venue: string;
-  cta: string;
-  href: string;
-  image?: string;
-  from: string;
-  to: string;
-};
-
-export const SPONSORS: Sponsor[] = [
-  {
-    id: "sample-1", producer: "(예시) 달빛컴퍼니", title: "별이 지는 밤에", tagline: "단 한 번의 계절, 가장 눈부신 이야기",
-    period: "2026.12.05 – 2027.02.28", venue: "OO아트센터 대극장", cta: "예매 안내 보기", href: "https://example.com/sponsor-1",
-    from: "#3b1d5a", to: "#c2410c",
-  },
-  {
-    id: "sample-2", producer: "(예시) 모래시계 프로덕션", title: "열두 번째 편지", tagline: "세 사람의 엇갈린 편지가 닿는 곳",
-    period: "2026.11.20 – 2027.01.31", venue: "OO소극장", cta: "자세히 보기", href: "https://example.com/sponsor-2",
-    from: "#0f3d3e", to: "#b45309",
-  },
-];

@@ -1,25 +1,33 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { ArrowLeft, Calendar, Clock, MapPin } from "lucide-react";
 import type { Show } from "@/types/show";
+import type { EventItem } from "@/types/event";
 import { buildIndex, period } from "@/lib/casting";
 import Poster from "./ui/Poster";
 import { StatusTag } from "./ui/Tags";
 import { FavShowButton } from "./ui/HeartButton";
 import CastingScheduler from "./casting/CastingScheduler";
 import SessionSheet from "./casting/SessionSheet";
+import EventSheet from "./casting/EventSheet";
 import EventsTab from "./EventsTab";
 import AdSenseBanner from "./ads/AdSenseBanner";
 import { ADSENSE_SLOT_DETAIL } from "@/lib/ads";
+import { recordRecent } from "@/lib/recent";
+import { statusOf } from "@/lib/status";
+import { useTodayKST } from "@/lib/useToday";
 
-export default function ShowDetail({ show }: { show: Show }) {
+export default function ShowDetail({ show, events = [], initialOpen = null }: { show: Show; events?: EventItem[]; initialOpen?: { date: string; sid?: string } | null }) {
   const idx = useMemo(() => buildIndex(show), [show]);
   const [tab, setTab] = useState<"cast" | "event">("cast");
   const [sel, setSel] = useState<Set<string>>(new Set());
   const [only, setOnly] = useState(false);
-  const [open, setOpen] = useState<{ date: string; sid?: string } | null>(null);
+  const [open, setOpen] = useState<{ date: string; sid?: string } | null>(initialOpen);
+  const today = useTodayKST();
+  const [evOpen, setEvOpen] = useState<EventItem | null>(null);
+  useEffect(() => { recordRecent(show.id); }, [show.id]); // 최근 본 공연 (이 브라우저에만 저장)
 
   const toggle = (id: string) =>
     setSel((p) => { const n = new Set(p); if (n.has(id)) n.delete(id); else n.add(id); return n; });
@@ -37,7 +45,7 @@ export default function ShowDetail({ show }: { show: Show }) {
         <Poster show={show} className="h-28 w-20 shrink-0 rounded-xl text-base" />
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-1.5">
-            <StatusTag status={show.status} />
+            <StatusTag status={statusOf(show, today)} />
             <span className="rounded-full border border-line px-2 py-0.5 text-xs text-mute">{show.genre}</span>
             <FavShowButton showId={show.id} />
           </div>
@@ -63,14 +71,15 @@ export default function ShowDetail({ show }: { show: Show }) {
 
       <main className="space-y-3 px-4 pt-4">
         {tab === "cast" ? (
-          <CastingScheduler showTitle={show.title} idx={idx} sel={sel} only={only} setOnly={setOnly} toggle={toggle} selectMany={(ids) => setSel(new Set(ids))} reset={() => setSel(new Set())} onOpen={openSheet} />
+          <CastingScheduler showTitle={show.title} idx={idx} sel={sel} only={only} setOnly={setOnly} toggle={toggle} selectMany={(ids) => setSel(new Set(ids))} reset={() => setSel(new Set())} onOpen={openSheet} events={events} onOpenEvent={setEvOpen} />
         ) : (
-          <EventsTab show={show} idx={idx} onOpen={openSheet} />
+          <EventsTab show={show} idx={idx} events={events} onOpen={openSheet} onOpenEvent={setEvOpen} />
         )}
       </main>
 
       <div className="px-4 pt-6"><AdSenseBanner slot={ADSENSE_SLOT_DETAIL} label="상세 하단 광고" /></div>
 
+      {evOpen && <EventSheet event={evOpen} onClose={() => setEvOpen(null)} />}
       {open && <SessionSheet idx={idx} date={open.date} focusId={open.sid} sel={sel} only={only} toggle={toggle} onClose={() => setOpen(null)} />}
     </div>
   );

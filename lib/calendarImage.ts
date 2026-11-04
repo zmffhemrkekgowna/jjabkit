@@ -7,7 +7,7 @@ import { showColor } from "./mySchedule";
  * - 화면 테마(다크/라이트)와 상관없이 항상 밝은 배경으로 그려서, 메신저에 올려도 잘 보여요.
  * - spec(그릴 내용)을 만드는 함수는 순수 함수라서 따로 테스트할 수 있고, 실제로 그리는 건 renderCalendar 하나예요.
  */
-export interface ImgEntry { time: string; text: string; sub?: string; color?: string; hit?: boolean; star?: boolean; sale?: boolean }
+export interface ImgEntry { time: string; text: string; sub?: string; color?: string; hit?: boolean; star?: boolean }
 export interface ImgCell { day: number; inMonth: boolean; dow: number; entries: ImgEntry[] }
 export interface ImgSpec { title: string; subtitle: string; weeks: ImgCell[][]; dimOthers: boolean; footer: string }
 
@@ -30,9 +30,9 @@ export function castingSpec(showTitle: string, idx: ShowIndex, cursor: Date, sel
       day: day.getDate(), inMonth, dow: day.getDay(),
       entries: list.map((s) => ({
         time: s.time,
-        text: idx.roles.slice(0, 2).map((r) => actorOf(idx, s.cast[r.id]).n).join(" / "),
+        text: idx.roles.slice(0, 2).map((r) => actorOf(idx, s.cast[r.id]).n).join(" / ") + (idx.roles.length > 2 ? " …" : ""),
         hit: sel.size > 0 && matches(idx, s, sel),
-        star: s.curtain, sale: s.timesale,
+        star: s.curtain,
       })),
     };
   });
@@ -41,7 +41,7 @@ export function castingSpec(showTitle: string, idx: ShowIndex, cursor: Date, sel
     title: showTitle,
     subtitle: `${cursor.getFullYear()}년 ${cursor.getMonth() + 1}월 캐스팅 · ${names.length ? `선택한 배우: ${names.join(", ")}` : "전체 회차"}`,
     weeks: chunk(cells, 7), dimOthers: sel.size > 0 && !only,
-    footer: "★ 커튼콜 데이   % 타임세일   ·   jjabkit",
+    footer: "★ 커튼콜 데이   ·   jjabkit",
   };
 }
 
@@ -57,7 +57,7 @@ export function mySchedSpec(items: MyItem[], cursor: Date, names: string[]): Img
       day: day.getDate(), inMonth, dow: day.getDay(),
       entries: list.map((i) => ({
         time: i.session.time, text: i.hit.join(" · "), sub: i.show.title, color: showColor(i.show),
-        star: i.session.curtain, sale: i.session.timesale,
+        star: i.session.curtain,
       })),
     };
   });
@@ -65,7 +65,7 @@ export function mySchedSpec(items: MyItem[], cursor: Date, names: string[]): Img
     title: "내 관심 배우 일정",
     subtitle: `${cursor.getFullYear()}년 ${cursor.getMonth() + 1}월 · ${names.join(", ")}`,
     weeks: chunk(cells, 7), dimOthers: false,
-    footer: "★ 커튼콜 데이   % 타임세일   ·   jjabkit",
+    footer: "★ 커튼콜 데이   ·   jjabkit",
   };
 }
 
@@ -140,7 +140,7 @@ export async function renderCalendar(spec: ImgSpec, scale = 2): Promise<Blob> {
         const tx = ex + (e.color ? 11 : 7), tw = ew - (e.color ? 16 : 12);
         const fg = e.hit ? C.onbrand : C.ink;
         ctx.fillStyle = fg; ctx.font = `700 13px ${FONT}`;
-        ctx.fillText(`${e.time}${e.star ? " ★" : ""}${e.sale ? " %" : ""}`, tx, ey + 17);
+        ctx.fillText(`${e.time}${e.star ? " ★" : ""}`, tx, ey + 17);
         ctx.font = `${sub ? 700 : 500} 14px ${FONT}`; ctx.fillStyle = sub && !e.hit ? C.brand : fg;
         ctx.fillText(fit(ctx, e.text, tw), tx, ey + 35);
         if (e.sub) { ctx.font = `400 12px ${FONT}`; ctx.fillStyle = e.hit ? C.onbrand : C.mute; ctx.fillText(fit(ctx, e.sub, tw), tx, ey + 52); }

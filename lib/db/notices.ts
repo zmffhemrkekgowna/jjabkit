@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { DbError } from "./errors";
 import type { Notice, NoticeKind } from "@/types/notice";
 
 const SELECT = "id, kind, title, body, show_id, pinned, created_at";
@@ -18,13 +19,13 @@ const toColumns = (n: NoticeInput) => ({
 export async function fetchNotices(db: SupabaseClient, limit = 30): Promise<Notice[]> {
   const { data, error } = await db.from("notices").select(SELECT)
     .order("pinned", { ascending: false }).order("created_at", { ascending: false }).limit(limit);
-  if (error) throw new Error(error.message);
+  if (error) throw new DbError("소식", error, "notices");
   return ((data ?? []) as unknown as Row[]).map(toNotice);
 }
 
 /** 화면 전체를 막지 않도록, 소식을 못 불러와도(표가 아직 없는 경우 등) 빈 목록을 돌려줘요. */
 export async function fetchNoticesSafe(db: SupabaseClient): Promise<Notice[]> {
-  try { return await fetchNotices(db); } catch { return []; }
+  try { return await fetchNotices(db); } catch (e) { if (e instanceof DbError && e.missing) return []; throw e; }
 }
 
 async function run<T>(p: PromiseLike<{ data: T; error: { message: string } | null }>): Promise<T> {

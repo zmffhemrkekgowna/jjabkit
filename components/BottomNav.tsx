@@ -1,29 +1,27 @@
 "use client";
 
-import { Suspense } from "react";
 import Link from "next/link";
-import { usePathname, useSearchParams } from "next/navigation";
-import { CalendarDays, Clapperboard, DatabaseBackup, House, UserRound } from "lucide-react";
+import { usePathname } from "next/navigation";
+import { CalendarClock, DatabaseBackup, House, UserRound } from "lucide-react";
 
-type MyTab = "show" | "actor" | "sched";
-export const myTabOf = (v: string | null | undefined): MyTab => (v === "show" || v === "actor" ? v : "sched");
+export type MyTab = "show" | "actor" | "fsched" | "sched";
+/** 마이페이지 탭: 관심 공연 / 관심 배우 / 관심 배우 일정(fsched) / 내 일정(sched, 기본) */
+export const myTabOf = (v: string | null | undefined): MyTab => (v === "show" || v === "actor" || v === "fsched" ? v : "sched");
 
 const ITEMS = [
   { id: "home", label: "홈", href: "/", Icon: House },
-  { id: "show", label: "관심공연", href: "/my?tab=show", Icon: Clapperboard },
-  { id: "actor", label: "관심배우", href: "/my?tab=actor", Icon: UserRound },
-  { id: "sched", label: "내일정", href: "/my?tab=sched", Icon: CalendarDays },
+  { id: "today", label: "오늘공연", href: "/today", Icon: CalendarClock },
+  { id: "my", label: "마이페이지", href: "/my", Icon: UserRound },
   { id: "backup", label: "데이터 백업", href: "/backup", Icon: DatabaseBackup },
 ] as const;
 
 function Nav() {
   const path = usePathname() ?? "";
-  const tab = myTabOf(useSearchParams().get("tab"));
   if (path.startsWith("/admin")) return null; // 관리자 화면은 자체 탭이 있어요
-  const active = path === "/" || path.startsWith("/shows") ? "home" : path.startsWith("/my") ? tab : path.startsWith("/backup") ? "backup" : "";
+  const active = path === "/" || path.startsWith("/shows") ? "home" : path.startsWith("/my") ? "my" : path.startsWith("/backup") ? "backup" : path.startsWith("/today") ? "today" : "";
   return (
     <nav aria-label="하단 메뉴" className="fixed inset-x-0 bottom-0 z-40 border-t border-line bg-card" style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}>
-      <ul className="mx-auto grid max-w-3xl grid-cols-5">
+      <ul className="mx-auto grid max-w-3xl grid-cols-4">
         {ITEMS.map(({ id, label, href, Icon }) => {
           const on = active === id;
           return (
@@ -41,7 +39,7 @@ function Nav() {
   );
 }
 
-/** 화면 맨 아래 고정 메뉴. 홈 / 관심공연 / 관심배우 / 내일정 / 데이터 백업. */
+/** 화면 맨 아래 고정 메뉴. 홈 / 오늘공연 / 마이페이지 / 데이터 백업. 관심 공연·관심 배우·관심 배우 일정·내 일정은 마이페이지 안 탭이에요. */
 export default function BottomNav() {
-  return <Suspense fallback={null}><Nav /></Suspense>;
+  return <Nav />;
 }

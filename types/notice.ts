@@ -18,3 +18,7 @@ export const KIND_LABEL: Record<NoticeKind, string> = {
   notice: "공지",
 };
 export const KINDS = Object.keys(KIND_LABEL) as NoticeKind[];
+
+/** 관리자 화면에서 새로 올리고 관리할 수 있는 종류. 스케줄 변경·업데이트는 더 이상 쓰지 않아요.
+ *  (이미 올라간 옛 소식이 사용자 화면에서 이름을 잃지 않도록 KIND_LABEL과 DB의 허용 값은 그대로 둬요.) */
+export const ADMIN_KINDS: NoticeKind[] = ["new_show", "notice"];

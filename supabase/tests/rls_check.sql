@@ -45,6 +45,19 @@ begin
     res := res || rls_check.line(not rls_check.try('insert into public.notices (title) values (''x'')'), '방문자: 소식 추가 차단');
     res := res || rls_check.line(not rls_check.try('select public.import_shows(''{"shows":[]}''::jsonb, false)'), '방문자: 백업 불러오기 함수 차단');
   end if;
+  if to_regclass('public.events') is not null then
+    res := res || rls_check.line(rls_check.n('select 1 from public.events') >= 0, '방문자: 이벤트 읽기 가능 (0004 적용 시)');
+    res := res || rls_check.line(not rls_check.try('insert into public.events (title) values (''x'')'), '방문자: 이벤트 추가 차단');
+    res := res || rls_check.line(not rls_check.try('insert into public.popups (title) values (''x'')'), '방문자: 팝업 추가 차단');
+    res := res || rls_check.line(rls_check.n('select 1 from public.popups where not active') = 0, '방문자: 꺼 둔 팝업은 안 보임');
+  end if;
+  if to_regclass('public.site_pages') is not null then
+    res := res || rls_check.line(rls_check.n('select 1 from public.site_pages') >= 0, '방문자: 안내 페이지 읽기 가능 (0005 적용 시)');
+    res := res || rls_check.line(not rls_check.try('insert into public.site_pages (slug, title) values (''about'', ''x'')'), '방문자: 안내 페이지 추가 차단');
+    res := res || rls_check.line(not rls_check.try('insert into public.site_pages (slug, title) values (''guide-x'', ''x'')'), '방문자: 새 안내 페이지(직접 만든 주소) 추가 차단');
+    res := res || rls_check.line(rls_check.n('update public.site_pages set title = ''hack''') <= 0, '방문자: 안내 페이지 수정 차단(0건)');
+    res := res || rls_check.line(rls_check.n('delete from public.site_pages') <= 0, '방문자: 안내 페이지 삭제 차단(0건)');
+  end if;
   reset role;
 
   -- 2) 로그인했지만 관리자가 아닌 계정
@@ -60,6 +73,11 @@ begin
   res := res || rls_check.line(not rls_check.try('insert into storage.objects (bucket_id, name) values (''posters'', ''x.png'')'), '일반 계정: 포스터 업로드 차단');
   if to_regclass('public.notices') is not null then
     res := res || rls_check.line(not rls_check.try('insert into public.notices (title) values (''x'')'), '일반 계정: 소식 추가 차단');
+    if to_regclass('public.events') is not null then
+      res := res || rls_check.line(not rls_check.try('insert into public.events (title) values (''x'')'), '일반 계정: 이벤트 추가 차단');
+      res := res || rls_check.line(not rls_check.try('insert into public.popups (title) values (''x'')'), '일반 계정: 팝업 추가 차단');
+      res := res || rls_check.line(rls_check.n('select 1 from public.popups where not active') = 0, '일반 계정: 꺼 둔 팝업은 안 보임');
+    end if;
     res := res || rls_check.line(not rls_check.try('select public.import_shows(''{"shows":[]}''::jsonb, true)'), '일반 계정: 백업 불러오기(교체) 차단');
   end if;
   reset role;
@@ -83,6 +101,12 @@ begin
     res := res || rls_check.line(rls_check.n(format('select 1 from public.session_cast where role_id = %L and cast_member_id is null', v_r1)) = 1, '관리자: 삭제한 배우의 회차는 미정으로 바뀜');
     if to_regclass('public.notices') is not null then
       res := res || rls_check.line(rls_check.try('insert into public.notices (title) values (''RLS 점검 소식'')'), '관리자: 소식 추가 가능');
+      if to_regclass('public.events') is not null then
+        res := res || rls_check.line(rls_check.try('insert into public.events (title, place) values (''RLS 이벤트'', ''극장'')'), '관리자: 이벤트 추가 가능');
+        res := res || rls_check.line(rls_check.try('insert into public.popups (title, active) values (''RLS 꺼진 팝업'', false)'), '관리자: 팝업 추가 가능');
+        res := res || rls_check.line(rls_check.n('select 1 from public.popups where not active') >= 1, '관리자: 꺼 둔 팝업도 보임');
+        res := res || rls_check.line(not rls_check.try('insert into public.popups (title, link_url) values (''x'', ''javascript:alert(1)'')'), '관리자: javascript: 링크 팝업은 DB가 거부');
+      end if;
       res := res || rls_check.line(rls_check.try('select public.import_shows(''{"shows":[{"title":"RLS 가져오기"}]}''::jsonb, false)'), '관리자: 백업 불러오기(추가) 가능');
       res := res || rls_check.line(not rls_check.try('select public.import_shows(''{"shows":[{"title":"t","sessions":[{"date":"2099-01-01","time":"10:00","cast":{"없는배역":""}}]}]}''::jsonb, false)'), '관리자: 잘못된 백업은 오류');
     end if;

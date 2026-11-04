@@ -1,13 +1,30 @@
 "use client";
 
-import type { ChangeEvent } from "react";
-import type { Genre, Show, Status } from "@/types/show";
+import { useState, type ChangeEvent } from "react";
+import type { Genre, Show } from "@/types/show";
+import { dateProblem, statusOf } from "@/lib/status";
+import { useTodayKST } from "@/lib/useToday";
+import { StatusTag } from "../ui/Tags";
 import { updateShow, uploadPoster } from "@/lib/db/shows";
 import Poster from "../ui/Poster";
 import { Fld, PALETTES, Sec, TextInput, inp, type Run } from "./shared";
 
 export default function ShowForm({ show, run }: { show: Show; run: Run }) {
   const upd = (patch: Parameters<typeof updateShow>[2], msg?: string) => run((db) => updateShow(db, show.id, patch), msg);
+  // 상태는 직접 고르지 않아요. 개막일·종료일로 자동 계산돼서, 날짜를 바꾸면 바로 다시 계산돼요.
+  const today = useTodayKST();
+  const [dateErr, setDateErr] = useState("");
+  const setDate = (field: "start" | "end", v: string) => {
+    const next = { start: show.start, end: show.end, [field]: v };
+    // 둘 다 채워졌는데 순서가 어긋나면 저장하지 않아요(잘못된 날짜로 상태를 짐작하지 않기 위해).
+    if (next.start && next.end && dateProblem(next.start, next.end)) {
+      setDateErr(field === "start" ? "개막일이 종료일보다 늦을 수 없어요. 일정을 뒤로 옮길 때는 종료일을 먼저 바꾼 뒤 개막일을 바꿔 주세요." : "종료일이 개막일보다 빠를 수 없어요. 일정을 앞으로 옮길 때는 개막일을 먼저 바꾼 뒤 종료일을 바꿔 주세요.");
+      return;
+    }
+    setDateErr("");
+    upd({ [field]: v });
+  };
+  const problem = dateErr || dateProblem(show.start, show.end);
   const onFile = (e: ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0];
     e.target.value = "";
@@ -42,13 +59,16 @@ export default function ShowForm({ show, run }: { show: Show; run: Run }) {
         <Fld label="장르">
           <select value={show.genre} onChange={(e) => upd({ genre: e.target.value as Genre })} className={inp}><option value="뮤지컬">뮤지컬</option><option value="연극">연극</option></select>
         </Fld>
-        <Fld label="상태">
-          <select value={show.status} onChange={(e) => upd({ status: e.target.value as Status })} className={inp}><option value="running">공연 중</option><option value="upcoming">개막 예정</option></select>
-        </Fld>
         <Fld label="극장"><TextInput value={show.venue} onCommit={(v) => upd({ venue: v })} className={inp} /></Fld>
         <Fld label="지역"><TextInput value={show.region} onCommit={(v) => upd({ region: v })} className={inp} /></Fld>
-        <Fld label="시작일"><input type="date" value={show.start} onChange={(e) => upd({ start: e.target.value })} className={inp} /></Fld>
-        <Fld label="종료일"><input type="date" value={show.end} onChange={(e) => upd({ end: e.target.value })} className={inp} /></Fld>
+        <Fld label="개막일"><input type="date" value={show.start} onChange={(e) => setDate("start", e.target.value)} max={show.end || undefined} aria-invalid={!!problem} className={inp} /></Fld>
+        <Fld label="종료일"><input type="date" value={show.end} onChange={(e) => setDate("end", e.target.value)} min={show.start || undefined} aria-invalid={!!problem} className={inp} /></Fld>
+        <div className="flex flex-wrap items-center gap-2 rounded-xl bg-bg p-3 sm:col-span-2" aria-live="polite">
+          <span className="text-sm font-medium">공연 상태</span>
+          <StatusTag status={statusOf(show, today)} />
+          <span className="text-xs text-mute">개막일·종료일에 맞춰 자동으로 정해져요(종료일 당일까지 공연 중, 한국 시간 기준). 직접 바꿀 필요가 없어요.</span>
+          {problem && <p role="alert" className="w-full text-sm font-medium text-brand">{problem}</p>}
+        </div>
         <Fld label="관람 등급"><TextInput value={show.age} onCommit={(v) => upd({ age: v })} placeholder="만 12세 이상" className={inp} /></Fld>
         <Fld label="러닝타임"><TextInput value={show.run} onCommit={(v) => upd({ run: v })} placeholder="약 150분(인터미션 포함)" className={inp} /></Fld>
         <Fld label="조기예매 안내 문구" className="sm:col-span-2"><TextInput value={show.eb} onCommit={(v) => upd({ eb: v })} placeholder="~ 2026.10.31(토)까지" className={inp} /></Fld>

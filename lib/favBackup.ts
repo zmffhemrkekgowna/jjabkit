@@ -6,15 +6,22 @@ export const FAV_KIND = "favorites";
 export const FAV_VERSION = 1;
 export const FAV_MAX_BYTES = 1024 * 1024;
 const MAX_ITEMS = 500;
+const MAX_SESSIONS = 2000;
 
-export interface FavBackupFile { app: "jjabkit"; kind: typeof FAV_KIND; version: number; exportedAt: string; shows: { id: string; title: string }[]; actors: string[] }
-interface ShowRef { id: string; title: string }
+export interface MyBackupSession { id: string; show: string; date: string; time: string }
+export interface FavBackupFile { app: "jjabkit"; kind: typeof FAV_KIND; version: number; exportedAt: string; shows: { id: string; title: string }[]; actors: string[]; /** 내 일정(없으면 예전 파일) */ mySessions?: MyBackupSession[] }
+interface SessionRef { id: string; date: string; time: string }
+interface ShowRef { id: string; title: string; sessions?: SessionRef[] }
 
-export function buildFavBackup(shows: ShowRef[], favShows: Set<string>, favActors: Set<string>, now = new Date()): FavBackupFile {
+export function buildFavBackup(shows: ShowRef[], favShows: Set<string>, favActors: Set<string>, now = new Date(), mine: Set<string> = new Set()): FavBackupFile {
+  // 내 일정은 회차 id와 함께 공연 제목·날짜·시간을 담아요. 데이터를 다시 만들어 id가 바뀌어도 이 셋으로 찾아 맞춰요.
+  const mySessions: MyBackupSession[] = shows.flatMap((s) => (s.sessions ?? []).filter((x) => mine.has(x.id)).map((x) => ({ id: x.id, show: s.title, date: x.date, time: x.time })))
+    .sort((a, b) => (a.date + a.time + a.show).localeCompare(b.date + b.time + b.show));
   return {
     app: "jjabkit", kind: FAV_KIND, version: FAV_VERSION, exportedAt: now.toISOString(),
     shows: shows.filter((s) => favShows.has(s.id)).map((s) => ({ id: s.id, title: s.title })),
     actors: [...favActors],
+    mySessions,
   };
 }
 export const favBackupFileName = (now = new Date()) => {
@@ -23,7 +30,7 @@ export const favBackupFileName = (now = new Date()) => {
 };
 
 export type FavParse =
-  | { ok: true; showIds: string[]; unmatched: string[]; actors: string[]; exportedAt: string }
+  | { ok: true; showIds: string[]; unmatched: string[]; actors: string[]; exportedAt: string; /** null이면 내 일정이 없는 예전 파일 */ sessionIds: string[] | null; unmatchedSessions: number }
   | { ok: false; error: string };
 
 const isObj = (v: unknown): v is Record<string, unknown> => typeof v === "object" && v !== null && !Array.isArray(v);
@@ -53,5 +60,19 @@ export function parseFavBackup(text: string, known: ShowRef[]): FavParse {
     const n = a.trim();
     if (n) actors.add(n);
   }
-  return { ok: true, showIds: [...showIds], unmatched, actors: [...actors], exportedAt: typeof raw.exportedAt === "string" ? raw.exportedAt : "" };
+  let sessionIds: string[] | null = null, unmatchedSessions = 0;
+  if (raw.mySessions !== undefined) {
+    if (!Array.isArray(raw.mySessions)) return { ok: false, error: "내 일정 항목의 형식이 잘못됐어요." };
+    if (raw.mySessions.length > MAX_SESSIONS) return { ok: false, error: `내 일정이 너무 많아요. (${MAX_SESSIONS}개까지)` };
+    const knownId = new Set<string>(), byKey = new Map<string, string>();
+    for (const s of known) for (const x of s.sessions ?? []) { knownId.add(x.id); byKey.set(`${s.title}|${x.date}|${x.time}`, x.id); }
+    const ids = new Set<string>();
+    for (const m of raw.mySessions) {
+      if (!isObj(m) || typeof m.id !== "string" || typeof m.show !== "string" || typeof m.date !== "string" || typeof m.time !== "string" || m.show.length > 200 || m.date.length > 10 || m.time.length > 5) return { ok: false, error: "내 일정 항목의 형식이 잘못됐어요." };
+      const id = knownId.has(m.id) ? m.id : byKey.get(`${m.show}|${m.date}|${m.time}`);
+      if (id) ids.add(id); else unmatchedSessions++;
+    }
+    sessionIds = [...ids];
+  }
+  return { ok: true, showIds: [...showIds], unmatched, actors: [...actors], exportedAt: typeof raw.exportedAt === "string" ? raw.exportedAt : "", sessionIds, unmatchedSessions };
 }

@@ -1,4 +1,8 @@
-import type { Genre, Show, Status } from "@/types/show";
+import type { Genre, Show } from "@/types/show";
+import { statusOf } from "./status";
+
+/** 백업 파일의 status 값은 예전 형식(v1)을 그대로 써요. 실제 상태는 날짜로 계산하므로 참고용이에요. */
+type Status = "running" | "upcoming";
 
 /**
  * 관리자 데이터 백업(JSON) 형식과 검증.
@@ -28,7 +32,7 @@ export function buildBackup(shows: Show[], now = new Date()): BackupFile {
       const actorName = new Map<string, string>();
       s.roles.forEach((r) => r.actors.forEach((a) => actorName.set(a.id, a.n)));
       return {
-        title: s.title, genre: s.genre, status: s.status, start: s.start, end: s.end, venue: s.venue, region: s.region,
+        title: s.title, genre: s.genre, status: (statusOf(s) === "upcoming" ? "upcoming" : "running") as Status, start: s.start, end: s.end, venue: s.venue, region: s.region,
         age: s.age, run: s.run, eb: s.eb, grad: s.grad, img: s.img,
         roles: s.roles.map((r) => ({ name: r.name, short: r.short, actors: r.actors.map((a) => a.n) })),
         sessions: [...s.sessions]

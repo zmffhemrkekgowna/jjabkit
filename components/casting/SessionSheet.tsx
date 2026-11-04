@@ -1,12 +1,14 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { Clock, ExternalLink, X } from "lucide-react";
-import { SITES, actorOf, fmtDate, fromKey, matches, visibleOn, type ShowIndex } from "@/lib/casting";
+import { CalendarCheck, CalendarPlus, Clock, X } from "lucide-react";
+import { actorOf, fmtDate, fromKey, matches, visibleOn, type ShowIndex } from "@/lib/casting";
 import { useFavorites } from "@/lib/favorites";
+import { useMySched } from "@/lib/mySched";
+import { useDialogFocus } from "@/lib/useDialogFocus";
 import Avatar from "../ui/Avatar";
 import { HeartButton } from "../ui/HeartButton";
-import { CurtainTag, TimeSaleTag } from "../ui/Tags";
+import { CurtainTag } from "../ui/Tags";
 
 interface Props {
   idx: ShowIndex; date: string; focusId?: string; sel: Set<string>; only: boolean;
@@ -15,39 +17,32 @@ interface Props {
   favMode?: boolean;
 }
 
-/** 날짜·회차를 누르면 올라오는 하단 시트: 시간, 전체 출연진(하트), 예매처 */
+/** 날짜·회차를 누르면 올라오는 하단 시트: 시간, 전체 출연진(하트), 내 일정 추가·삭제 */
 export default function SessionSheet({ idx, date, focusId, sel, only, toggle, onClose, favMode = false }: Props) {
   const closeRef = useRef<HTMLButtonElement>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
   const fav = useFavorites();
-
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
-    window.addEventListener("keydown", onKey);
-    closeRef.current?.focus();
-    if (focusId) document.getElementById(`sess-${focusId}`)?.scrollIntoView({ block: "nearest" });
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => { window.removeEventListener("keydown", onKey); document.body.style.overflow = prev; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  const mine = useMySched();
+  useDialogFocus(dialogRef, onClose, closeRef); // 포커스 이동·가두기·Esc·배경 스크롤 방지·닫을 때 포커스 복귀
+  useEffect(() => { if (focusId) document.getElementById(`sess-${focusId}`)?.scrollIntoView({ block: "nearest" }); }, [focusId]);
 
   const list = favMode ? idx.byDate.get(date) ?? [] : visibleOn(idx, date, sel, only);
   const title = fmtDate(fromKey(date));
 
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50" onClick={onClose}>
-      <div role="dialog" aria-modal="true" aria-label={`${title} 회차 정보`} onClick={(e) => e.stopPropagation()}
+      <div ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby="session-sheet-title" onClick={(e) => e.stopPropagation()}
         className="sheet max-h-[88vh] w-full max-w-lg overflow-y-auto rounded-t-3xl bg-card pb-4 shadow-2xl">
         <div className="sticky top-0 z-10 bg-card px-4 pb-2 pt-3">
           <div className="mx-auto mb-2 h-1 w-10 rounded-full bg-line" />
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-lg font-bold">{title}</h2>
+              <h2 id="session-sheet-title" className="text-lg font-bold">{title}</h2>
               <p className="text-xs text-mute">
                 {list.length}회차 · {favMode ? "하트로 관심 배우를 등록해요" : "배우를 누르면 필터에, 하트를 누르면 관심 배우에 추가돼요"}
               </p>
             </div>
-            <button ref={closeRef} onClick={onClose} aria-label="닫기" className="rounded-full border border-line p-2"><X size={18} aria-hidden /></button>
+            <button ref={closeRef} onClick={onClose} aria-label="닫기" className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-line"><X size={18} aria-hidden /></button>
           </div>
         </div>
 
@@ -60,7 +55,7 @@ export default function SessionSheet({ idx, date, focusId, sel, only, toggle, on
                 <div className="mb-2 flex flex-wrap items-center gap-2">
                   <Clock size={16} aria-hidden />
                   <span className="text-lg font-bold tabular-nums">{s.time}</span>
-                  {s.curtain && <CurtainTag />}{s.timesale && <TimeSaleTag />}
+                  {s.curtain && <CurtainTag />}
                   {ok && <span className="rounded-full bg-brand px-2 py-0.5 text-xs font-medium text-onbrand">{favMode ? "관심 배우 출연" : "선택 조건 일치"}</span>}
                 </div>
                 <ul className="grid gap-1">
@@ -83,15 +78,16 @@ export default function SessionSheet({ idx, date, focusId, sel, only, toggle, on
                     );
                   })}
                 </ul>
-                <p className="mb-1.5 mt-3 text-xs text-mute">예매처 바로가기</p>
-                <div className="grid grid-cols-3 gap-2">
-                  {SITES.map(([n, u]) => (
-                    <a key={n} href={u} target="_blank" rel="noopener noreferrer"
-                      className="flex items-center justify-center gap-1 rounded-xl border border-line py-2 text-sm font-medium hover:border-brand hover:text-brand">
-                      {n}<ExternalLink size={13} aria-hidden />
-                    </a>
-                  ))}
-                </div>
+                {(() => {
+                  const added = mine.has(s.id);
+                  return (
+                    <button onClick={() => mine.toggle(s.id)} aria-pressed={added} aria-label={added ? "내 일정 삭제" : "내 일정 추가"}
+                      className={`mt-3 flex w-full items-center justify-center gap-1.5 rounded-xl border py-2.5 text-sm font-bold ${added ? "border-brand bg-hit text-brand" : "border-brand bg-brand text-onbrand"}`}>
+                      {added ? <CalendarCheck size={16} aria-hidden /> : <CalendarPlus size={16} aria-hidden />}
+                      {added ? "일정 추가됨 · 내 일정 삭제" : "내 일정 추가"}
+                    </button>
+                  );
+                })()}
               </article>
             );
           })}

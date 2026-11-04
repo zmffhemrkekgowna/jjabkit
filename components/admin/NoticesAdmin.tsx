@@ -1,14 +1,15 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useDirty } from "./dirty";
 import { Pencil, Pin, Plus, Trash2, X } from "lucide-react";
 import type { Show } from "@/types/show";
-import { KINDS, KIND_LABEL, type Notice, type NoticeKind } from "@/types/notice";
+import { ADMIN_KINDS, KIND_LABEL, type Notice, type NoticeKind } from "@/types/notice";
 import { createNotice, deleteNotice, updateNotice, type NoticeInput } from "@/lib/db/notices";
 import { fmtNoticeDate } from "@/lib/notices";
 import { Fld, Sec, btn, ghost, iconBtn, inp, useAdminRun } from "./shared";
 
-const EMPTY: NoticeInput = { kind: "notice", title: "", body: "", showId: "", pinned: false };
+const EMPTY: NoticeInput = { kind: "new_show", title: "", body: "", showId: "", pinned: false };
 
 export interface NoticeDraft extends Partial<NoticeInput> { nonce: number }
 
@@ -27,6 +28,8 @@ export default function NoticesAdmin({ notices, shows, draft }: { notices: Notic
 
   const set = <K extends keyof NoticeInput>(k: K, v: NoticeInput[K]) => setForm((f) => ({ ...f, [k]: v }));
   const reset = () => { setEditing(null); setForm(EMPTY); };
+  useDirty("notice-form", "소식 입력", editing === null && JSON.stringify(form) !== JSON.stringify(EMPTY));
+  const shown = notices.filter((n) => ADMIN_KINDS.includes(n.kind)); // 스케줄 변경·업데이트 종류는 관리 대상이 아니에요
   const valid = form.title.trim().length > 0 && form.title.trim().length <= 100 && form.body.trim().length <= 2000;
 
   const save = async () => {
@@ -38,14 +41,14 @@ export default function NoticesAdmin({ notices, shows, draft }: { notices: Notic
 
   return (
     <div className="space-y-4">
-      <p className="text-xs text-mute">신규 공연을 올리거나 캐스팅·일정이 바뀌면 여기에 소식을 남겨요. 방문자 화면 상단 종 아이콘에 N 배지로 표시돼요. 본문은 글자 그대로 보여요.</p>
+      <p className="text-xs text-mute">신규 공연 소식과 공지를 여기에 남겨요. 방문자 화면 상단 종 아이콘에 N 배지로 표시돼요. 본문은 글자 그대로 보여요.</p>
       <p aria-live="polite" className="min-h-5 text-sm text-brand">{msg}</p>
 
       <Sec title={editing ? "소식 수정" : "새 소식 쓰기"} right={editing && <button onClick={reset} className={ghost}><X size={14} aria-hidden />수정 취소</button>}>
         <div className="grid gap-3 sm:grid-cols-2">
           <Fld label="종류">
             <select value={form.kind} onChange={(e) => set("kind", e.target.value as NoticeKind)} className={inp}>
-              {KINDS.map((k) => <option key={k} value={k}>{KIND_LABEL[k]}</option>)}
+              {ADMIN_KINDS.map((k) => <option key={k} value={k}>{KIND_LABEL[k]}</option>)}
             </select>
           </Fld>
           <Fld label="연결할 공연 (선택)">
@@ -55,7 +58,7 @@ export default function NoticesAdmin({ notices, shows, draft }: { notices: Notic
             </select>
           </Fld>
           <Fld label={`제목 (${form.title.trim().length}/100)`} className="sm:col-span-2">
-            <input value={form.title} maxLength={100} onChange={(e) => set("title", e.target.value)} className={inp} placeholder="예: 위키드 11월 캐스팅 일정이 바뀌었어요" />
+            <input value={form.title} maxLength={100} onChange={(e) => set("title", e.target.value)} className={inp} placeholder="예: 위키드 신규 공연이 올라왔어요" />
           </Fld>
           <Fld label={`내용 (${form.body.trim().length}/2000)`} className="sm:col-span-2">
             <textarea value={form.body} maxLength={2000} rows={4} onChange={(e) => set("body", e.target.value)} className={inp} />
@@ -67,10 +70,10 @@ export default function NoticesAdmin({ notices, shows, draft }: { notices: Notic
         <div className="mt-3"><button onClick={save} className={btn} disabled={!valid}><Plus size={14} aria-hidden />{editing ? "수정 저장" : "소식 올리기"}</button></div>
       </Sec>
 
-      <Sec title={`올린 소식 ${notices.length}개`}>
-        {notices.length === 0 ? <p className="text-sm text-mute">아직 올린 소식이 없어요.</p> : (
+      <Sec title={`올린 소식 ${shown.length}개`}>
+        {shown.length === 0 ? <p className="text-sm text-mute">아직 올린 소식이 없어요.</p> : (
           <ul className="space-y-2">
-            {notices.map((n) => (
+            {shown.map((n) => (
               <li key={n.id} className="flex items-start gap-2 rounded-xl border border-line bg-bg p-3">
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-1.5 text-xs text-mute">

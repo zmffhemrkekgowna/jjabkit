@@ -8,5 +8,5 @@ export const metadata = { title: "데이터 백업 · JJabKit" };
 
 export default async function BackupRoute() {
   const [{ isAdmin }, shows] = await Promise.all([getAuthState(), fetchShows(await createClient())]);
-  return <FavBackup shows={shows.map((s) => ({ id: s.id, title: s.title }))} isAdmin={isAdmin} />;
+  return <FavBackup shows={shows.map((s) => ({ id: s.id, title: s.title, sessions: s.sessions.map((x) => ({ id: x.id, date: x.date, time: x.time })) }))} isAdmin={isAdmin} />;
 }

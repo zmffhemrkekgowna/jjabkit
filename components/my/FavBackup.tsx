@@ -4,6 +4,7 @@ import { useRef, useState } from "react";
 import Link from "next/link";
 import { Download, Upload, Database, AlertTriangle } from "lucide-react";
 import { useFavorites } from "@/lib/favorites";
+import { useMySched } from "@/lib/mySched";
 import { buildFavBackup, favBackupFileName, parseFavBackup, type FavParse } from "@/lib/favBackup";
 import { downloadBlob } from "@/lib/download";
 
@@ -13,8 +14,9 @@ const btn = "inline-flex items-center gap-1 rounded-lg bg-brand px-3 py-2 text-s
 const ghost = "inline-flex items-center gap-1 rounded-lg border border-line px-3 py-2 text-sm font-medium hover:border-brand";
 
 /** 데이터 백업 화면. 누구나: 내 하트(관심 공연·배우) 백업/복구. 관리자: 공연 데이터 백업 화면으로 가는 링크. */
-export default function FavBackup({ shows, isAdmin }: { shows: { id: string; title: string }[]; isAdmin: boolean }) {
+export default function FavBackup({ shows, isAdmin }: { shows: { id: string; title: string; sessions?: { id: string; date: string; time: string }[] }[]; isAdmin: boolean }) {
   const fav = useFavorites();
+  const mine = useMySched();
   const file = useRef<HTMLInputElement>(null);
   const [parsed, setParsed] = useState<Extract<FavParse, { ok: true }> | null>(null);
   const [error, setError] = useState("");
@@ -22,9 +24,9 @@ export default function FavBackup({ shows, isAdmin }: { shows: { id: string; tit
   const [msg, setMsg] = useState("");
 
   const exportJson = () => {
-    const d = buildFavBackup(shows, fav.shows, fav.actors);
+    const d = buildFavBackup(shows, fav.shows, fav.actors, new Date(), mine.ids);
     downloadBlob(new Blob([JSON.stringify(d, null, 2)], { type: "application/json" }), favBackupFileName());
-    setMsg(`관심 공연 ${d.shows.length}개, 관심 배우 ${d.actors.length}명을 내려받았어요.`);
+    setMsg(`관심 공연 ${d.shows.length}개, 관심 배우 ${d.actors.length}명, 내 일정 ${d.mySessions?.length ?? 0}개를 내려받았어요.`);
   };
 
   const pick = async (f: File | undefined) => {
@@ -39,7 +41,13 @@ export default function FavBackup({ shows, isAdmin }: { shows: { id: string; tit
     const s = new Set(parsed.showIds), a = new Set(parsed.actors);
     if (mode === "merge") { fav.shows.forEach((x) => s.add(x)); fav.actors.forEach((x) => a.add(x)); }
     fav.replaceAll(s, a);
-    setMsg(`불러왔어요. 관심 공연 ${s.size}개, 관심 배우 ${a.size}명이에요.${parsed.unmatched.length ? ` (지금 없는 공연 ${parsed.unmatched.length}개는 건너뛰었어요)` : ""}`);
+    let ms = mine.ids.size;
+    if (parsed.sessionIds) { // 내 일정이 들어 있는 파일일 때만 바꿔요. 예전 파일이면 지금 내 일정은 그대로예요.
+      const next = new Set(parsed.sessionIds);
+      if (mode === "merge") mine.ids.forEach((x) => next.add(x));
+      mine.replaceAll(next); ms = next.size;
+    }
+    setMsg(`불러왔어요. 관심 공연 ${s.size}개, 관심 배우 ${a.size}명, 내 일정 ${ms}개예요.${parsed.unmatched.length ? ` (지금 없는 공연 ${parsed.unmatched.length}개는 건너뛰었어요)` : ""}${parsed.unmatchedSessions ? ` (지금 없는 회차 ${parsed.unmatchedSessions}개는 건너뛰었어요)` : ""}`);
     setParsed(null);
     if (file.current) file.current.value = "";
   };
@@ -48,18 +56,18 @@ export default function FavBackup({ shows, isAdmin }: { shows: { id: string; tit
     <div className="mx-auto max-w-3xl space-y-4 px-4 pb-6 pt-5">
       <header>
         <h1 className="font-serif text-xl font-bold">데이터 백업</h1>
-        <p className="mt-1 text-xs text-mute">하트는 이 브라우저에만 저장돼요. 브라우저를 바꾸거나 사이트 데이터를 지우면 사라지니, 파일로 백업해 두면 안전해요.</p>
+        <p className="mt-1 text-xs text-mute">하트와 내 일정은 이 브라우저에만 저장돼요. 브라우저를 바꾸거나 사이트 데이터를 지우면 사라지니, 파일로 백업해 두면 안전해요.</p>
       </header>
       <p aria-live="polite" className="min-h-5 text-sm text-brand">{msg}</p>
 
       <section className={card}>
-        <h2 className="font-bold">내 하트 백업</h2>
-        <p className="mt-1 text-sm text-mute">관심 공연 {fav.shows.size}개 · 관심 배우 {fav.actors.size}명</p>
+        <h2 className="font-bold">내 하트·내 일정 백업</h2>
+        <p className="mt-1 text-sm text-mute">관심 공연 {fav.shows.size}개 · 관심 배우 {fav.actors.size}명 · 내 일정 {mine.ids.size}개</p>
         <button onClick={exportJson} disabled={!fav.ready} className={`${btn} mt-3`}><Download size={14} aria-hidden />JSON 파일 내려받기</button>
       </section>
 
       <section className={card}>
-        <h2 className="font-bold">내 하트 불러오기</h2>
+        <h2 className="font-bold">내 하트·내 일정 불러오기</h2>
         <p className="mt-1 text-sm text-mute">위에서 내려받은 파일만 불러올 수 있어요. 내용은 먼저 검사해요.</p>
         <input ref={file} type="file" accept="application/json,.json" aria-label="하트 백업 JSON 파일 선택" onChange={(e) => pick(e.target.files?.[0])}
           className="mt-3 block w-full text-sm file:mr-3 file:rounded-lg file:border file:border-line file:bg-card file:px-3 file:py-2 file:text-sm" />
@@ -67,12 +75,13 @@ export default function FavBackup({ shows, isAdmin }: { shows: { id: string; tit
         {parsed && (
           <div className="mt-3 space-y-3">
             <div className="rounded-xl border border-line bg-bg p-3 text-sm">
-              파일 안: 관심 공연 {parsed.showIds.length}개 · 관심 배우 {parsed.actors.length}명
+              파일 안: 관심 공연 {parsed.showIds.length}개 · 관심 배우 {parsed.actors.length}명{parsed.sessionIds ? ` · 내 일정 ${parsed.sessionIds.length}개` : " · (내 일정 없는 예전 파일: 지금 내 일정은 그대로 둬요)"}
+              {parsed.unmatchedSessions > 0 && <p className="mt-1 text-xs text-mute">지금 없는 회차라 건너뛰는 내 일정: {parsed.unmatchedSessions}개</p>}
               {parsed.unmatched.length > 0 && <p className="mt-1 text-xs text-mute">지금 없는 공연이라 건너뛰는 항목: {parsed.unmatched.slice(0, 5).join(", ")}{parsed.unmatched.length > 5 ? ` 외 ${parsed.unmatched.length - 5}개` : ""}</p>}
             </div>
             <fieldset className="space-y-2">
               <legend className="mb-1 text-xs font-medium text-mute">불러오는 방식</legend>
-              {([["merge", "지금 하트에 합치기", "지금 등록된 하트는 그대로 두고 파일의 하트를 더해요."], ["replace", "파일 내용으로 바꾸기", "지금 하트를 지우고 파일의 하트만 남겨요."]] as const).map(([v, l, h]) => (
+              {([["merge", "지금 하트에 합치기", "지금 등록된 하트·내 일정은 그대로 두고 파일의 것을 더해요."], ["replace", "파일 내용으로 바꾸기", "지금 하트·내 일정을 지우고 파일의 것만 남겨요."]] as const).map(([v, l, h]) => (
                 <label key={v} className="flex items-start gap-2 text-sm">
                   <input type="radio" name="fav-mode" checked={mode === v} onChange={() => setMode(v)} className="mt-1" />
                   <span><b>{l}</b><span className="block text-xs text-mute">{h}</span></span>

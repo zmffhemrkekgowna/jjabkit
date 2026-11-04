@@ -63,7 +63,7 @@ export default function BackupPanel({ shows }: { shows: Show[] }) {
       <p aria-live="polite" className="min-h-5 text-sm text-brand">{msg}</p>
 
       <Sec title="백업 내려받기 (JSON)">
-        <p className="text-sm text-mute">지금 등록된 공연 {shows.length}개의 정보, 배역, 배우, 회차, 회차별 캐스팅을 파일 하나로 저장해요. 소식(공지)과 포스터 이미지 파일은 포함되지 않아요.</p>
+        <p className="text-sm text-mute">지금 등록된 공연 {shows.length}개의 정보, 배역, 배우, 회차, 회차별 캐스팅을 파일 하나로 저장해요. 소식·이벤트·팝업 광고와 포스터 이미지 파일은 포함되지 않아요.</p>
         <button onClick={exportJson} className={`${btn} mt-3`}><Download size={14} aria-hidden />JSON 파일 내려받기</button>
       </Sec>
 

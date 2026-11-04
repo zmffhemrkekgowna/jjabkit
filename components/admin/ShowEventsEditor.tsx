@@ -1,0 +1,153 @@
+"use client";
+
+import { useState } from "react";
+import { ExternalLink, Pencil, Plus, Trash2, X } from "lucide-react";
+import type { Show } from "@/types/show";
+import type { EventItem } from "@/types/event";
+import { createEvent, deleteEvent, deleteEventsOfShow, restoreEvents, updateEvent, type EventInput } from "@/lib/db/events";
+import { useDirty } from "./dirty";
+import { EVENT_COLORS, isHex6, readableOn } from "@/lib/color";
+import { PHASE_LABEL, isHttpUrl, periodText, phaseOf } from "@/lib/period";
+import { Fld, Sec, btn, ghost, iconBtn, inp, showToast, type Run } from "./shared";
+
+const EMPTY: EventInput = { title: "", startsOn: "", endsOn: "", linkUrl: "", color: "" };
+
+/**
+ * 한 공연의 이벤트 관리. 이벤트는 여기서만 만들어요.
+ * '이벤트 있음'을 체크해야 입력 영역이 보이고, 끄면 이 공연의 이벤트를 모두 지워 '이벤트 없음' 상태가 돼요.
+ */
+export default function ShowEventsEditor({ show, events, run }: { show: Show; events: EventItem[]; run: Run }) {
+  const [on, setOn] = useState<boolean | null>(null); // null이면 이벤트가 있는지(데이터)를 따라요
+  const checked = on ?? events.length > 0;
+  const [offAsk, setOffAsk] = useState(false);
+  const [editing, setEditing] = useState<string | null>(null);
+  const [form, setForm] = useState<EventInput>(EMPTY);
+  const [delId, setDelId] = useState<string | null>(null);
+  const [err, setErr] = useState("");
+
+  const set = <K extends keyof EventInput>(k: K, v: EventInput[K]) => { setErr(""); setForm((f) => ({ ...f, [k]: v })); };
+  const reset = () => { setEditing(null); setForm(EMPTY); setErr(""); };
+  useDirty(`event-form-${show.id}`, "이벤트 입력", editing === null && JSON.stringify(form) !== JSON.stringify(EMPTY));
+  const t = form.title.trim();
+  const problem =
+    !t || t.length > 100 ? "제목을 1~100자로 입력해 주세요."
+    : !form.startsOn ? "시작하는 날을 골라 주세요."
+    : form.endsOn && form.endsOn < form.startsOn ? "끝나는 날이 시작하는 날보다 빠를 수 없어요."
+    : form.linkUrl.trim() && !isHttpUrl(form.linkUrl.trim()) ? "공지 링크는 http:// 또는 https:// 로 시작해야 해요."
+    : form.color && !isHex6(form.color) ? "막대 색은 #rrggbb 형식이어야 해요."
+    : "";
+
+  const toggle = (v: boolean) => {
+    if (v) { setOn(true); setOffAsk(false); return; }
+    if (events.length > 0) { setOffAsk(true); return; } // 지워질 이벤트가 있으면 먼저 확인
+    setOn(false); reset();
+  };
+  const confirmOff = async () => {
+    const ok = await run((db) => deleteEventsOfShow(db, show.id), "이 공연의 이벤트를 모두 삭제했어요. 이벤트 없음 상태예요.", () => run((db) => restoreEvents(db, events), "삭제한 이벤트를 되살렸어요."));
+    if (ok) { setOn(false); setOffAsk(false); reset(); }
+  };
+  const save = async () => {
+    if (problem) { setErr(problem); showToast(problem, "error"); return; }
+    const ok = await run(
+      (db) => (editing ? updateEvent(db, editing, form, !!events.find((x) => x.id === editing)?.color) : createEvent(db, show.id, form)),
+      editing ? "이벤트가 수정되었습니다." : "이벤트가 추가되었습니다.",
+    );
+    if (ok) reset();
+  };
+  const edit = (e: EventItem) => { setEditing(e.id); setErr(""); setForm({ title: e.title, startsOn: e.startsOn, endsOn: e.endsOn, linkUrl: e.linkUrl, color: e.color }); };
+
+  const live = events.filter((e) => phaseOf(e) === "active").length;
+
+  return (
+    <Sec title="이벤트" right={<span className="text-xs text-mute">{checked ? (events.length ? `${events.length}개 · 진행 중 ${live}개` : "아직 없음") : "이벤트 없음"}</span>}>
+      <label className="inline-flex cursor-pointer items-center gap-2 text-sm font-medium">
+        <input type="checkbox" checked={checked} onChange={(e) => toggle(e.target.checked)} className="h-4 w-4 accent-[var(--brand)]" />
+        이 공연에 이벤트 있음
+      </label>
+      {!checked && <p className="mt-2 text-xs text-mute">체크하면 이벤트(제목, 시작·끝나는 날, 공지 링크)를 등록할 수 있어요. 이벤트는 이 공연의 캐스팅 달력에 기간만큼 이어진 막대로 보여요.</p>}
+
+      {offAsk && (
+        <div role="alertdialog" aria-label="이벤트 삭제 확인" className="mt-3 flex flex-wrap items-center gap-2 rounded-xl border border-brand bg-hit p-3 text-sm">
+          <span className="min-w-0 flex-1">체크를 끄면 이 공연의 이벤트 {events.length}개가 삭제돼요. 계속할까요?</span>
+          <button onClick={confirmOff} className={btn}>삭제하고 끄기</button>
+          <button onClick={() => setOffAsk(false)} className={ghost}>취소</button>
+        </div>
+      )}
+
+      {checked && (
+        <div className="mt-4 space-y-4">
+          {events.length > 0 && (
+            <ul className="space-y-2" aria-label={`${show.title} 이벤트 목록`}>
+              {events.map((e) => {
+                const ph = phaseOf(e);
+                return (
+                  <li key={e.id} className="flex items-start gap-2 rounded-xl border border-line bg-bg p-3">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-1.5 text-xs text-mute">
+                        <span className={`rounded-full border px-2 py-0.5 font-medium ${ph === "active" ? "border-brand text-brand" : "border-line"}`}>{PHASE_LABEL[ph]}</span>
+                        <span className="tabular-nums">{periodText(e)}</span>
+                        {isHex6(e.color) && <span aria-label={`막대 색 ${e.color}`} className="inline-block h-3 w-3 rounded-full border border-line" style={{ background: e.color }} />}
+                      </div>
+                      <div className="mt-1 truncate text-sm font-bold">{e.title}</div>
+                      {isHttpUrl(e.linkUrl) && <a href={e.linkUrl} target="_blank" rel="noopener noreferrer" className="mt-0.5 inline-flex max-w-full items-center gap-1 truncate text-xs text-brand underline"><ExternalLink size={11} aria-hidden />공지 링크</a>}
+                    </div>
+                    {delId === e.id ? (
+                      <>
+                        <button onClick={() => run((db) => deleteEvent(db, e.id), "이벤트가 삭제되었습니다.", () => run((db) => restoreEvents(db, [e]), "삭제한 이벤트를 되살렸어요.")).then(() => setDelId(null))} className={btn}>삭제 확인</button>
+                        <button onClick={() => setDelId(null)} className={ghost}>취소</button>
+                      </>
+                    ) : (
+                      <>
+                        <button onClick={() => edit(e)} aria-label={`${e.title} 수정`} className={iconBtn}><Pencil size={14} aria-hidden /></button>
+                        <button onClick={() => setDelId(e.id)} aria-label={`${e.title} 삭제`} className={iconBtn}><Trash2 size={14} aria-hidden /></button>
+                      </>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+
+          <div className="rounded-xl border border-line p-3">
+            <div className="mb-2 flex items-center justify-between gap-2">
+              <p className="text-sm font-bold">{editing ? "이벤트 수정" : "이벤트 추가"}</p>
+              {editing && <button onClick={reset} className={ghost}><X size={14} aria-hidden />수정 취소</button>}
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <Fld label={`제목 (${t.length}/100)`} className="sm:col-span-2">
+                <input value={form.title} maxLength={100} onChange={(e) => set("title", e.target.value)} className={inp} placeholder="예: 커튼콜 데이 포토카드 증정" />
+              </Fld>
+              <Fld label="시작하는 날"><input type="date" value={form.startsOn} onChange={(e) => set("startsOn", e.target.value)} className={inp} /></Fld>
+              <Fld label="끝나는 날 (비우면 하루만)"><input type="date" value={form.endsOn} onChange={(e) => set("endsOn", e.target.value)} className={inp} /></Fld>
+              <Fld label="공지 링크 (선택)" className="sm:col-span-2">
+                <input value={form.linkUrl} maxLength={500} onChange={(e) => set("linkUrl", e.target.value)} className={inp} placeholder="https://..." inputMode="url" />
+              </Fld>
+              <div className="sm:col-span-2">
+                <p className="text-xs font-medium text-mute">달력 막대 색 (선택)</p>
+                <div className="mt-1.5 flex flex-wrap items-center gap-2">
+                  <button type="button" onClick={() => set("color", "")} aria-pressed={!form.color} aria-label="기본색"
+                    className={`rounded-full border px-3 py-1 text-xs ${!form.color ? "border-brand bg-hit font-bold text-brand" : "border-line text-mute"}`}>기본</button>
+                  {EVENT_COLORS.map((c) => (
+                    <button key={c.hex} type="button" onClick={() => set("color", c.hex)} aria-label={`막대 색 ${c.name}`} aria-pressed={form.color.toLowerCase() === c.hex}
+                      style={{ background: c.hex }} className={`h-7 w-7 rounded-full border-2 ${form.color.toLowerCase() === c.hex ? "border-ink ring-2 ring-[var(--brand)]" : "border-line"}`} />
+                  ))}
+                  <label className="inline-flex items-center gap-1 text-xs text-mute">직접 고르기
+                    <input type="color" aria-label="막대 색 직접 고르기" value={isHex6(form.color) ? form.color : "#2563eb"} onChange={(e) => set("color", e.target.value)} className="h-7 w-9 cursor-pointer rounded border border-line bg-card p-0.5" />
+                  </label>
+                </div>
+                <div className="mt-2 flex h-6 items-center overflow-hidden rounded-md px-2 text-xs font-bold" data-preview
+                  style={isHex6(form.color) ? { background: form.color, color: readableOn(form.color) } : undefined}>
+                  <span className={`truncate ${isHex6(form.color) ? "" : "rounded-md bg-ink px-2 text-bg"}`}>{t || "이벤트 제목"}</span>
+                </div>
+              </div>
+            </div>
+            <div className="mt-3 flex flex-wrap items-center gap-3">
+              <button onClick={save} className={btn} disabled={!!problem}><Plus size={14} aria-hidden />{editing ? "수정 저장" : "이벤트 추가"}</button>
+              {(err || (problem && form.title)) && <p className="text-xs text-mute">{err || problem}</p>}
+            </div>
+          </div>
+        </div>
+      )}
+    </Sec>
+  );
+}

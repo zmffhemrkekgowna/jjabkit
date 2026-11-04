@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useFavorites } from "@/lib/favorites";
+import { BookOpen } from "lucide-react";
 import ThemeToggle from "./ThemeToggle";
 import NoticeBell from "./NoticeBell";
 import type { Notice } from "@/types/notice";
@@ -13,8 +13,6 @@ import type { Notice } from "@/types/notice";
  */
 export default function ModeBar({ isAdmin, notices }: { isAdmin: boolean; notices: Notice[] }) {
   const path = usePathname();
-  const fav = useFavorites();
-  const count = fav.shows.size + fav.actors.size;
   const here = path.startsWith("/admin") ? "admin" : path.startsWith("/my") ? "my" : "user";
   const tab = (on: boolean) => `rounded-md px-2.5 py-1 text-[13px] ${on ? "bg-ink text-bg" : "text-mute"}`;
   return (
@@ -23,11 +21,14 @@ export default function ModeBar({ isAdmin, notices }: { isAdmin: boolean; notice
         <Link href="/" aria-current={here === "user" ? "page" : undefined} className={tab(here === "user")}>사용자 화면</Link>
         <Link href="/my" aria-current={here === "my" ? "page" : undefined} className={tab(here === "my")}>
           마이페이지
-          {count > 0 && <span className="ml-1 rounded-full bg-brand px-1.5 text-[11px] font-bold text-onbrand">{count}</span>}
         </Link>
         {isAdmin && <Link href="/admin" aria-current={here === "admin" ? "page" : undefined} className={tab(here === "admin")}>관리자 화면</Link>}
       </nav>
       <div className="flex shrink-0 items-center gap-1.5">
+        <Link href="/guide" aria-label="이용 안내" title="이용 안내" aria-current={path.startsWith("/guide") ? "page" : undefined}
+          className={`flex h-8 w-8 items-center justify-center rounded-lg border ${path.startsWith("/guide") ? "border-brand text-brand" : "border-line text-mute hover:text-brand"}`}>
+          <BookOpen size={16} aria-hidden />
+        </Link>
         <NoticeBell notices={notices} />
         <ThemeToggle />
       </div>
