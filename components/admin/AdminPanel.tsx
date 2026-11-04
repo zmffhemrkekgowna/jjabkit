@@ -17,9 +17,9 @@ import BackupPanel from "./BackupPanel";
 import PagesAdmin from "./PagesAdmin";
 import ToastHost from "./ToastHost";
 import type { CustomPage, PageSlug, SitePage } from "@/types/page";
+import type { Tab } from "@/lib/adminTabs";
 
-export type Tab = "shows" | "popups" | "notices" | "pages" | "backup";
-export const TAB_IDS: Tab[] = ["shows", "popups", "notices", "pages", "backup"];
+export type { Tab };
 const TABS: [Tab, string][] = [["shows", "공연 관리"], ["popups", "팝업 광고"], ["notices", "소식·공지"], ["pages", "안내 페이지"], ["backup", "백업·복구"]];
 
 export default function AdminPanel({ shows, notices, events, popups, pages, customPages = [], initialTab = "shows" }: { shows: Show[]; notices: Notice[]; events: EventItem[]; popups: Popup[]; pages: Record<PageSlug, SitePage & { custom: boolean }>; customPages?: CustomPage[]; initialTab?: Tab }) {

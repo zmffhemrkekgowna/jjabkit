@@ -1,4 +1,5 @@
-import AdminPanel, { TAB_IDS } from "@/components/admin/AdminPanel";
+import AdminPanel from "@/components/admin/AdminPanel";
+import { TAB_IDS } from "@/lib/adminTabs";
 import { fetchEventsSafe } from "@/lib/db/events";
 import { fetchPopupsSafe } from "@/lib/db/popups";
 import { fetchNoticesSafe } from "@/lib/db/notices";
