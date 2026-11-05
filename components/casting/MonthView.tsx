@@ -74,16 +74,15 @@ export default function MonthView({ idx, cursor, sel, only, today, events = [], 
                         {list.map((s) => {
                           const ok = sel.size > 0 && matches(idx, s, sel);
                           const all = idx.roles.map((r) => actorOf(idx, s.cast[r.id]).n);
-                          const names = all.slice(0, 2), more = all.length > names.length;
+                          const names = all.slice(0, 3), more = all.length > names.length;
                           return (
                             <button key={s.id} onClick={() => onOpen(k, s.id)} aria-label={`${fmtDate(day)} ${s.time} ${all.join(", ")}, 전체 출연진 보기`} title={all.join(" / ")}
                               className={`block w-full min-w-0 rounded-md border px-0.5 py-0.5 text-left leading-tight transition-colors sm:px-1.5 sm:py-1 ${ok ? "border-brand bg-brand text-onbrand" : `border-line bg-bg hover:border-brand ${sel.size > 0 ? "opacity-40" : ""}`}`}>
                               <span className="flex flex-wrap items-center gap-x-0.5 text-[9px] font-bold tabular-nums opacity-80 sm:gap-x-1 sm:text-[10px]">
                                 {s.time}{s.curtain && <Star size={9} aria-hidden />}
                               </span>
-                              <span className="hidden truncate text-[11px] font-medium sm:block">{names.join(" / ")}{more && " …"}</span>
-                              {names.map((n, j) => <span key={j} className="block truncate text-[10px] font-medium sm:hidden">{n}</span>)}
-                              {more && <span aria-hidden className="block text-[10px] font-bold leading-none text-mute sm:hidden">…</span>}
+                              {names.map((n, j) => <span key={j} className="block truncate text-[9px] font-medium leading-[1.2] sm:text-[10px]">{n}</span>)}
+                              {more && <span aria-hidden className="block text-[9px] font-bold leading-none opacity-70 sm:text-[10px]">…</span>}
                             </button>
                           );
                         })}
