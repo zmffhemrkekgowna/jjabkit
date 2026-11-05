@@ -10,6 +10,7 @@ import Poster from "./ui/Poster";
 import { StatusTag } from "./ui/Tags";
 import { FavShowButton } from "./ui/HeartButton";
 import CastingScheduler from "./casting/CastingScheduler";
+import { showColor } from "@/lib/mySchedule";
 import SessionSheet from "./casting/SessionSheet";
 import EventSheet from "./casting/EventSheet";
 import EventsTab from "./EventsTab";
@@ -71,7 +72,7 @@ export default function ShowDetail({ show, events = [], initialOpen = null }: { 
 
       <main className="space-y-3 px-4 pt-4">
         {tab === "cast" ? (
-          <CastingScheduler showTitle={show.title} idx={idx} sel={sel} only={only} setOnly={setOnly} toggle={toggle} selectMany={(ids) => setSel(new Set(ids))} reset={() => setSel(new Set())} onOpen={openSheet} events={events} onOpenEvent={setEvOpen} />
+          <CastingScheduler color={showColor(show)} showTitle={show.title} idx={idx} sel={sel} only={only} setOnly={setOnly} toggle={toggle} selectMany={(ids) => setSel(new Set(ids))} reset={() => setSel(new Set())} onOpen={openSheet} events={events} onOpenEvent={setEvOpen} />
         ) : (
           <EventsTab show={show} idx={idx} events={events} onOpen={openSheet} onOpenEvent={setEvOpen} />
         )}
