@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { createPortal } from "react-dom";
 import { Bell, Pin, X } from "lucide-react";
 import { KIND_LABEL, type Notice } from "@/types/notice";
 import { fmtNoticeDate, markSeen, readSeen, unreadOf } from "@/lib/notices";
@@ -10,6 +11,7 @@ import { fmtNoticeDate, markSeen, readSeen, unreadOf } from "@/lib/notices";
  * 상단 막대의 '소식' 버튼과 모달.
  * - 아직 열어 보지 않은 소식이 있으면 N 배지가 떠요. (열어 본 시각은 이 브라우저의 localStorage에 저장)
  * - 본문은 글자 그대로만 보여줘요(HTML로 해석하지 않아요).
+ * - 모달은 document.body로 옮겨 그려요. 상단 막대(sticky z-40) 안에 두면 하단 메뉴(z-40)가 모달 위를 덮어요.
  */
 export default function NoticeBell({ notices }: { notices: Notice[] }) {
   const [seen, setSeen] = useState<string | null>(null); // null = 아직 저장소를 읽기 전
@@ -59,11 +61,11 @@ export default function NoticeBell({ notices }: { notices: Notice[] }) {
         )}
       </button>
 
-      {open && (
+      {open && createPortal(
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 sm:items-center sm:p-4"
           onMouseDown={(e) => { if (e.target === e.currentTarget) close(); }}>
           <div ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby="notice-title"
-            className="flex max-h-[85vh] w-full max-w-lg flex-col overflow-hidden rounded-t-2xl border border-line bg-card shadow-2xl sm:rounded-2xl">
+            className="flex max-h-[85vh] max-h-[85dvh] w-full max-w-lg flex-col overflow-hidden rounded-t-2xl border border-line bg-card shadow-2xl sm:rounded-2xl">
             <div className="flex items-center justify-between border-b border-line px-4 py-3">
               <h2 id="notice-title" className="font-bold">업데이트 · 소식</h2>
               <button ref={closeRef} onClick={close} aria-label="소식 닫기" className="rounded-full border border-line p-2"><X size={16} aria-hidden /></button>
@@ -94,7 +96,8 @@ export default function NoticeBell({ notices }: { notices: Notice[] }) {
               )}
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </>
   );
