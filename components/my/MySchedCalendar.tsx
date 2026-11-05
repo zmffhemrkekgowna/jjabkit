@@ -5,6 +5,7 @@ import { ChevronLeft, ChevronRight, Star, Trash2, X } from "lucide-react";
 import type { Show } from "@/types/show";
 import { DOW, addDays, fmtDate, fromKey, toKey } from "@/lib/casting";
 import { showColor } from "@/lib/mySchedule";
+import { readableText } from "@/lib/color";
 import { castNames } from "@/lib/ics";
 import { CurtainTag } from "../ui/Tags";
 import { useDialogFocus } from "@/lib/useDialogFocus";
@@ -82,11 +83,11 @@ export default function MySchedCalendar({ items, now, today, onRemove, onOpenSes
                   const cast = castNames(i.show, i.session);
                   return (
                     <button key={i.session.id} onClick={() => { setSelDate(k); setDetail(i.session.id); }} aria-label={`${label(i)} 상세 보기`}
-                      className={`${n === 2 ? "hidden sm:block" : "block"} w-full min-w-0 rounded-md border border-l-2 border-line bg-bg px-0.5 py-0.5 text-left leading-tight hover:border-brand sm:border-l-4 sm:px-1.5 sm:py-1 ${isPast(i) ? "opacity-55" : ""} ${!inMonth ? "opacity-70" : ""}`}
-                      style={{ borderLeftColor: showColor(i.show) }}>
-                      <span className="flex items-center gap-x-0.5 text-[9px] font-bold tabular-nums opacity-80 sm:text-[10px]">{i.session.time}{i.session.curtain && <Star size={9} aria-hidden />}</span>
+                      className={`${n === 2 ? "hidden sm:block" : "block"} w-full min-w-0 rounded-md px-1 py-1 text-left leading-tight hover:brightness-110 sm:px-1.5 ${isPast(i) ? "opacity-55" : ""} ${!inMonth ? "opacity-70" : ""}`}
+                      style={{ background: showColor(i.show), color: readableText(showColor(i.show)) }}>
+                      <span className="flex items-center gap-x-0.5 text-[11px] font-bold tabular-nums sm:text-xs">{i.session.time}{i.session.curtain && <Star size={9} aria-hidden />}</span>
                       <span className="line-clamp-2 break-keep text-[10px] font-bold sm:line-clamp-1 sm:text-[11px]">{i.show.title}</span>
-                      {cast.length > 0 && <span className="hidden truncate text-[10px] text-mute sm:block">{cast.slice(0, 2).join(" · ")}{cast.length > 2 ? " 외" : ""}</span>}
+                      {cast.length > 0 && <span className="hidden truncate text-[10px] sm:block">{cast.slice(0, 2).join(" · ")}{cast.length > 2 ? " 외" : ""}</span>}
                     </button>
                   );
                 })}
@@ -107,7 +108,7 @@ export default function MySchedCalendar({ items, now, today, onRemove, onOpenSes
                 return (
                   <li key={i.session.id}>
                     <button onClick={() => { setDetail(i.session.id); }} aria-label={`${label(i)} 상세 보기`}
-                      className={`block w-full rounded-xl border border-l-4 border-line bg-bg p-3 text-left hover:border-brand ${isPast(i) ? "opacity-70" : ""}`} style={{ borderLeftColor: showColor(i.show) }}>
+                      className={`block w-full rounded-xl border border-l-4 border-line bg-bg p-3 text-left hover:border-brand ${isPast(i) ? "opacity-70" : ""}`} style={{ background: showColor(i.show), color: readableText(showColor(i.show)) }}>
                       <span className="flex flex-wrap items-center gap-1.5"><span className="font-bold tabular-nums">{i.session.time}</span>{i.session.curtain && <CurtainTag />}{isPast(i) && <span className="text-xs text-mute">지난 일정</span>}</span>
                       <span className="mt-0.5 block font-medium">{i.show.title}</span>
                       <span className="mt-0.5 block truncate text-xs text-mute">{cast.length ? cast.join(" · ") : "출연진 미정"}</span>
