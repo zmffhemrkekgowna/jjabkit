@@ -2,19 +2,21 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { DbError } from "./errors";
 import type { Genre, Session, SessionInput, Show, ShowPatch } from "@/types/show";
 
-const SELECT = `
+const SELECT_BASE = `
   id, title, genre, start_date, end_date, venue, region, age_rating,
   runtime_text, early_bird_text, poster_url, poster_palette,
   roles ( id, name, short_name, sort_order, cast_members ( id, name, sort_order ) ),
   sessions ( id, starts_on, starts_at, is_curtain_call, is_time_sale,
              session_cast ( role_id, cast_member_id ) )
 `;
+/** schedule_color 칸은 0009를 실행해야 생겨요. 아직 없는 DB에서도 공연이 그대로 보이도록, 칸이 없다는 오류가 나면 색 없이 다시 읽어요. */
+const SELECT = SELECT_BASE.replace("poster_palette,", "poster_palette, schedule_color,");
 
 interface ShowRow {
   id: string; title: string; genre: Genre;
   start_date: string | null; end_date: string | null;
   venue: string; region: string; age_rating: string; runtime_text: string; early_bird_text: string;
-  poster_url: string | null; poster_palette: string;
+  poster_url: string | null; poster_palette: string; schedule_color?: string | null;
   roles: {
     id: string; name: string; short_name: string; sort_order: number;
     cast_members: { id: string; name: string; sort_order: number }[];
@@ -38,6 +40,7 @@ function toShow(r: ShowRow): Show {
     run: r.runtime_text,
     eb: r.early_bird_text,
     grad: r.poster_palette,
+    color: r.schedule_color ?? "",
     img: r.poster_url ?? "",
     poster: r.title.split(" ").filter(Boolean),
     roles: [...r.roles]
@@ -80,13 +83,20 @@ function asShowRows(data: unknown): ShowRow[] {
 }
 
 /* ---------- 조회 (사용자 화면) ---------- */
+async function select<T>(build: (cols: string) => PromiseLike<{ data: T; error: { message: string } | null }>): Promise<T> {
+  const r = await build(SELECT);
+  if (r.error && /schedule_color/i.test(r.error.message)) return run(build(SELECT_BASE));
+  if (r.error) throw new Error(r.error.message);
+  return r.data;
+}
+
 export async function fetchShows(db: SupabaseClient): Promise<Show[]> {
-  const rows = await run(db.from("shows").select(SELECT).order("start_date", { ascending: true }));
+  const rows = await select((c) => db.from("shows").select(c).order("start_date", { ascending: true }));
   return asShowRows(rows).map(toShow);
 }
 
 export async function fetchShow(db: SupabaseClient, id: string): Promise<Show | null> {
-  const row = await run(db.from("shows").select(SELECT).eq("id", id).maybeSingle());
+  const row = await select((c) => db.from("shows").select(c).eq("id", id).maybeSingle());
   if (!row) return null;
   return toShow(asShowRows([row])[0]);
 }
@@ -95,9 +105,9 @@ export async function fetchShow(db: SupabaseClient, id: string): Promise<Show | 
 const COLUMNS: Record<keyof ShowPatch, string> = {
   title: "title", genre: "genre", start: "start_date", end: "end_date",
   venue: "venue", region: "region", age: "age_rating", run: "runtime_text", eb: "early_bird_text",
-  grad: "poster_palette", img: "poster_url",
+  grad: "poster_palette", img: "poster_url", color: "schedule_color",
 };
-const NULLABLE = new Set<keyof ShowPatch>(["start", "end", "img"]);
+const NULLABLE = new Set<keyof ShowPatch>(["start", "end", "img", "color"]);
 
 function toColumns(patch: ShowPatch) {
   const out: Record<string, unknown> = {};
