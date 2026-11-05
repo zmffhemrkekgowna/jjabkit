@@ -1,14 +1,17 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { CalendarDays, ChevronLeft, ChevronRight, List, Plus, Trash2 } from "lucide-react";
 import type { Role, Session, SessionInput, Show } from "@/types/show";
 import { bulkUpdateSessions, deleteSessions, restoreNote, restoreSessions, saveSession } from "@/lib/db/shows";
 import { bySlot, planTimeChange } from "@/lib/bulkSessions";
 import { useDirty } from "./dirty";
+import TimeInput from "./TimeInput";
 import { DOW, addDays, fmtDate, fromKey, toKey } from "@/lib/casting";
 import type { EventItem } from "@/types/event";
 import { weekBars } from "@/components/casting/MonthView";
+import SlotCard from "@/components/casting/SlotCard";
+import { showColor } from "@/lib/mySchedule";
 import { isHex6, readableOn } from "@/lib/color";
 import { planRepeat } from "@/lib/repeatSessions";
 import { Fld, Sec, btn, friendly, ghost, iconBtn, inp, showToast, undoAction, type Notify, type Run } from "./shared";
@@ -38,15 +41,16 @@ function SessionRow({ show, s, run, picked, onPick }: { show: Show; s: Session; 
   const save = (patch: Partial<SessionInput>) =>
     run((db) => saveSession(db, show.id, { date: s.date, time: s.time, cast: s.cast, curtain: s.curtain, timesale: s.timesale, ...patch }, s.id));
   const commitDateTime = () => { if (dt.date && dt.time && (dt.date !== s.date || dt.time !== s.time)) save(dt); };
+  const commitRef = useRef(commitDateTime); commitRef.current = commitDateTime; // 입력칸이 방금 정리한 값으로 저장하도록 렌더 뒤에 호출해요
   const del = () => run((db) => deleteSessions(db, show.id, [s.id]), "회차가 삭제되었습니다.", () => run((db) => restoreSessions(db, show.id, [s]), (r) => `삭제한 회차를 되살렸어요. ${restoreNote(r)}`.trim()));
 
   return (
-    <li className={`rounded-xl border p-2.5 ${picked ? "border-brand bg-hit" : "border-line"}`}>
+    <li className={`rounded-xl border border-l-4 p-2.5 ${picked ? "border-brand bg-hit" : "border-line"}`} style={{ borderLeftColor: showColor(show) }}>
       <div className="flex flex-wrap items-center gap-2">
         <label className="-m-1.5 flex h-11 w-11 shrink-0 cursor-pointer items-center justify-center"><input type="checkbox" checked={picked} onChange={(e) => onPick(e.target.checked)} aria-label={`${s.date} ${s.time} 회차 선택`} className="h-5 w-5 accent-[var(--brand)]" /></label>
         <input type="date" value={dt.date} onChange={(e) => setDt({ ...dt, date: e.target.value })} onBlur={commitDateTime} aria-label="날짜" className={`${inp} !w-auto`} />
         <span aria-hidden className="w-4 text-xs text-mute">{dt.date ? DOW[fromKey(dt.date).getDay()] : ""}</span>
-        <input type="time" value={dt.time} onChange={(e) => setDt({ ...dt, time: e.target.value })} onBlur={commitDateTime} aria-label="시간" className={`${inp} !w-auto`} />
+        <div className="w-24"><TimeInput value={dt.time} onChange={(v) => setDt((d) => ({ ...d, time: v }))} onBlur={() => setTimeout(() => commitRef.current(), 0)} label="시간" /></div>
         <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-3 gap-y-1.5">
           {show.roles.map((r) => castSelect(r, s.cast[r.id] ?? "", (v) => save({ cast: { ...s.cast, [r.id]: v } }), true))}
         </div>
@@ -130,7 +134,7 @@ function BulkBar({ show, chosen, run, clear }: { show: Show; chosen: Session[]; 
         </div>
         <div className="flex flex-wrap items-center gap-1.5 rounded-lg bg-bg p-2">
           <span className="w-full text-xs font-medium text-mute">시간 한꺼번에 변경</span>
-          <input type="time" value={time} onChange={(e) => setTime(e.target.value)} aria-label="바꿀 시간" className={`${inp} !w-auto`} />
+          <div className="w-24"><TimeInput value={time} onChange={setTime} label="바꿀 시간" /></div>
           <button onClick={changeTime} disabled={busy || !time} className={ghost}>시간 바꾸기</button>
         </div>
         <div className="flex flex-wrap items-center gap-1.5 rounded-lg bg-bg p-2">
@@ -188,23 +192,10 @@ function SessionsCalendar({ show, events, cursor, sel, onSel, onMonth }: { show:
                     return (
                       <button key={k} role="gridcell" onClick={() => onSel(k)} aria-pressed={on}
                         aria-label={`${fmtDate(day)} ${list.length ? `회차 ${list.length}개` : "회차 없음"}`}
-                        className={`flex min-h-[4.75rem] min-w-0 flex-col gap-0.5 p-0.5 text-left sm:min-h-[6rem] sm:gap-1 sm:p-1 ${on ? "relative z-10 bg-hit ring-2 ring-inset ring-[var(--brand)]" : inM ? "bg-card hover:bg-hit" : "bg-bg"}`}>
+                        className={`flex min-h-[3.75rem] min-w-0 flex-col gap-0.5 p-0.5 text-left sm:min-h-[5rem] sm:gap-1 sm:p-1 ${on ? "relative z-10 bg-hit ring-2 ring-inset ring-[var(--brand)]" : inM ? "bg-card hover:bg-hit" : "bg-bg"}`}>
                         <span className={`flex h-5 shrink-0 items-center px-0.5 text-[11px] tabular-nums sm:text-xs ${!inM ? "opacity-30" : day.getDay() === 0 ? "text-brand" : ""}`}>{day.getDate()}</span>
                         {lanes > 0 && <span aria-hidden style={{ height: `calc(${lanes} * var(--lane))` }} className="block shrink-0" />}
-                        {inM && list.map((x) => {
-                          const all = show.roles.map((r) => nameOf(r, x.cast[r.id]));
-                          const names = all.slice(0, 2), more = all.length > 2;
-                          return (
-                            <span key={x.id} title={all.join(" / ")} className="block w-full min-w-0 rounded-md border border-line bg-bg px-0.5 py-0.5 leading-tight sm:px-1.5 sm:py-1">
-                              <span className="flex flex-wrap items-center gap-x-0.5 text-[9px] font-bold tabular-nums opacity-80 sm:gap-x-1 sm:text-[10px]">
-                                {x.time}
-                              </span>
-                              <span className="hidden truncate text-[11px] font-medium sm:block">{names.join(" / ")}{more && " …"}</span>
-                              {names.map((n, j) => <span key={j} className="block truncate text-[10px] font-medium sm:hidden">{n}</span>)}
-                              {more && <span aria-hidden className="block text-[10px] font-bold leading-none text-mute sm:hidden">…</span>}
-                            </span>
-                          );
-                        })}
+                        {inM && list.map((x) => <SlotCard key={x.id} as="span" color={showColor(show)} time={x.time} all={show.roles.map((r) => nameOf(r, x.cast[r.id]))} />)}
                       </button>
                     );
                   })}
@@ -306,7 +297,7 @@ export default function SessionsEditor({ show, events = [], run, notify }: { sho
             <div className="grid gap-2 sm:grid-cols-3">
               <Fld label="시작일"><input type="date" value={rp.start} onChange={(e) => setRpf({ start: e.target.value })} className={inp} /></Fld>
               <Fld label="종료일"><input type="date" value={rp.end} onChange={(e) => setRpf({ end: e.target.value })} className={inp} /></Fld>
-              <Fld label="회차 시간"><input type="time" value={rp.time} onChange={(e) => setRpf({ time: e.target.value })} className={inp} /></Fld>
+              <Fld label="회차 시간"><TimeInput value={rp.time} onChange={(v) => setRpf({ time: v })} label="회차 시간" /></Fld>
             </div>
             <div>
               <p className="text-xs font-medium text-mute">요일</p>
@@ -340,7 +331,7 @@ export default function SessionsEditor({ show, events = [], run, notify }: { sho
         ) : (<>
         <div className="grid gap-2 sm:grid-cols-2">
           <Fld label="날짜"><input type="date" value={date} onChange={(e) => setDd({ ...dd, date: e.target.value })} className={inp} /></Fld>
-          <Fld label="회차 시간"><input type="time" value={dd.time} onChange={(e) => setDd({ ...dd, time: e.target.value })} className={inp} /></Fld>
+          <Fld label="회차 시간"><TimeInput value={dd.time} onChange={(v) => setDd((d) => ({ ...d, time: v }))} label="회차 시간" /></Fld>
           {show.roles.map((r) => castSelect(r, dd.cast[r.id] ?? r.actors[0]?.id ?? "", (v) => setDd({ ...dd, cast: { ...dd.cast, [r.id]: v } })))}
         </div>
         <div className="mt-3 flex flex-wrap items-center gap-4">
