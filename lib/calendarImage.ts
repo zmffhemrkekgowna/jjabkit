@@ -1,13 +1,14 @@
 import { DOW, actorOf, addDays, matches, toKey, visibleOn, type ShowIndex } from "./casting";
 import type { MyItem } from "./mySchedule";
 import { showColor } from "./mySchedule";
+import { isHex6, readableText } from "./color";
 
 /**
  * 달력을 PNG 이미지로 만들어요.
  * - 화면 테마(다크/라이트)와 상관없이 항상 밝은 배경으로 그려서, 메신저에 올려도 잘 보여요.
  * - spec(그릴 내용)을 만드는 함수는 순수 함수라서 따로 테스트할 수 있고, 실제로 그리는 건 renderCalendar 하나예요.
  */
-export interface ImgEntry { time: string; text: string; sub?: string; color?: string; hit?: boolean; star?: boolean }
+export interface ImgEntry { time: string; text: string; sub?: string; color?: string; /** 카드 바탕색(공연별 스케줄 색). 없으면 기본 카드색 */ fill?: string; hit?: boolean; star?: boolean }
 export interface ImgCell { day: number; inMonth: boolean; dow: number; entries: ImgEntry[] }
 export interface ImgSpec { title: string; subtitle: string; weeks: ImgCell[][]; dimOthers: boolean; footer: string }
 
@@ -22,7 +23,7 @@ export function monthDays(cursor: Date): Date[] {
 const chunk = <T,>(a: T[], n: number): T[][] => Array.from({ length: Math.ceil(a.length / n) }, (_, i) => a.slice(i * n, i * n + n));
 
 /** 공연 상세의 캐스팅 달력. 현재 배우 필터(sel)와 "선택한 배우만 보기"(only)를 그대로 반영해요. */
-export function castingSpec(showTitle: string, idx: ShowIndex, cursor: Date, sel: Set<string>, only: boolean): ImgSpec {
+export function castingSpec(showTitle: string, idx: ShowIndex, cursor: Date, sel: Set<string>, only: boolean, color?: string): ImgSpec {
   const cells = monthDays(cursor).map((day): ImgCell => {
     const inMonth = day.getMonth() === cursor.getMonth();
     const list = inMonth ? visibleOn(idx, toKey(day), sel, only) : [];
@@ -30,9 +31,10 @@ export function castingSpec(showTitle: string, idx: ShowIndex, cursor: Date, sel
       day: day.getDate(), inMonth, dow: day.getDay(),
       entries: list.map((s) => ({
         time: s.time,
-        text: idx.roles.slice(0, 2).map((r) => actorOf(idx, s.cast[r.id]).n).join(" / ") + (idx.roles.length > 2 ? " …" : ""),
+        text: idx.roles.slice(0, 3).map((r) => actorOf(idx, s.cast[r.id]).n).join(", ") + (idx.roles.length > 3 ? " …" : ""),
         hit: sel.size > 0 && matches(idx, s, sel),
         star: s.curtain,
+        fill: color,
       })),
     };
   });
@@ -56,7 +58,7 @@ export function mySchedSpec(items: MyItem[], cursor: Date, names: string[]): Img
     return {
       day: day.getDate(), inMonth, dow: day.getDay(),
       entries: list.map((i) => ({
-        time: i.session.time, text: i.hit.join(" · "), sub: i.show.title, color: showColor(i.show),
+        time: i.session.time, text: i.hit.join(" · "), sub: i.show.title, fill: showColor(i.show),
         star: i.session.curtain,
       })),
     };
@@ -70,8 +72,8 @@ export function mySchedSpec(items: MyItem[], cursor: Date, names: string[]): Img
 }
 
 /* ───────── 그리기 ───────── */
-export const IMG = { cellW: 150, margin: 40, headH: 124, dowH: 40, footH: 56, entryH: 44, entryHSub: 60, gap: 4, maxEntries: 6, minRowH: 96 } as const;
-const C = { bg: "#F4F4F9", card: "#FFFFFF", ink: "#1B1A22", mute: "#6A6877", line: "#E3E1EA", brand: "#8B1E3F", onbrand: "#FFFFFF", hit: "#FBE8EE", out: "#FAFAFC" };
+export const IMG = { cellW: 150, margin: 40, headH: 124, dowH: 40, footH: 56, entryH: 62, entryHSub: 60, gap: 4, maxEntries: 6, minRowH: 96 } as const;
+const C = { bg: "#F4F4F9", card: "#FFFFFF", ink: "#1B1A22", mute: "#6A6877", line: "#E3E1EA", brand: "#8B1E3F", onbrand: "#FFFFFF", hit: "#FBE8EE", out: "#FAFAFC", slot: "#3B2A47" };
 const FONT = '"Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif';
 
 /** 칸 높이: 일정이 많은 칸에 맞춰 그 주(줄) 전체를 키워요. 일정이 너무 많으면 +N 한 줄로 줄여요. */
@@ -87,6 +89,21 @@ export function rowHeights(spec: ImgSpec): number[] {
 }
 export function imageSize(spec: ImgSpec): { w: number; h: number } {
   return { w: IMG.cellW * 7 + IMG.margin * 2, h: IMG.headH + IMG.dowH + rowHeights(spec).reduce((a, b) => a + b, 0) + IMG.footH };
+}
+
+/** 쉼표로 이어진 출연진을 칸 너비에 맞춰 최대 maxLines줄로 나눠요(이름 중간에서는 자르지 않아요). 넘치면 마지막 줄 끝을 …로 줄여요. */
+function wrapCast(ctx: CanvasRenderingContext2D, text: string, maxW: number, maxLines: number): string[] {
+  const parts = text.split(/(?<=,) /);
+  const lines: string[] = [];
+  let cur = "";
+  for (const p of parts) {
+    const t = cur ? `${cur} ${p}` : p;
+    if (!cur || ctx.measureText(t).width <= maxW) cur = t;
+    else { lines.push(cur); cur = p; }
+  }
+  if (cur) lines.push(cur);
+  if (lines.length > maxLines) { const rest = lines.slice(maxLines - 1).join(" "); lines.length = maxLines - 1; lines.push(rest); }
+  return lines.map((l, i) => (i === lines.length - 1 ? fit(ctx, l, maxW) : l));
 }
 
 function fit(ctx: CanvasRenderingContext2D, text: string, maxW: number): string {
@@ -134,16 +151,20 @@ export async function renderCalendar(spec: ImgSpec, scale = 2): Promise<Blob> {
         const ex = x + 5, ey = y + 30 + k * (eh + IMG.gap), ew = IMG.cellW - 10;
         const dim = spec.dimOthers && !e.hit;
         ctx.globalAlpha = dim ? 0.4 : 1;
-        ctx.fillStyle = e.hit ? C.brand : C.bg; ctx.fillRect(ex, ey, ew, eh);
-        ctx.strokeStyle = e.hit ? C.brand : C.line; ctx.lineWidth = 1; ctx.strokeRect(ex + 0.5, ey + 0.5, ew - 1, eh - 1);
+        const fillOk = !e.hit && !!e.fill && isHex6(e.fill);
+        ctx.fillStyle = e.hit ? C.brand : fillOk ? e.fill! : C.slot; ctx.fillRect(ex, ey, ew, eh);
+        const fg = e.hit ? C.onbrand : fillOk ? readableText(e.fill!) : C.onbrand;
         if (e.color) { ctx.fillStyle = e.color; ctx.fillRect(ex, ey, 5, eh); }
         const tx = ex + (e.color ? 11 : 7), tw = ew - (e.color ? 16 : 12);
-        const fg = e.hit ? C.onbrand : C.ink;
-        ctx.fillStyle = fg; ctx.font = `700 13px ${FONT}`;
-        ctx.fillText(`${e.time}${e.star ? " ★" : ""}`, tx, ey + 17);
-        ctx.font = `${sub ? 700 : 500} 14px ${FONT}`; ctx.fillStyle = sub && !e.hit ? C.brand : fg;
-        ctx.fillText(fit(ctx, e.text, tw), tx, ey + 35);
-        if (e.sub) { ctx.font = `400 12px ${FONT}`; ctx.fillStyle = e.hit ? C.onbrand : C.mute; ctx.fillText(fit(ctx, e.sub, tw), tx, ey + 52); }
+        ctx.fillStyle = fg; ctx.font = `700 14px ${FONT}`;
+        ctx.fillText(`${e.time}${e.star ? " ★" : ""}`, tx, ey + 18);
+        if (e.sub) {
+          ctx.font = `700 14px ${FONT}`; ctx.fillText(fit(ctx, e.text, tw), tx, ey + 36);
+          ctx.font = `400 12px ${FONT}`; ctx.globalAlpha *= 0.85; ctx.fillText(fit(ctx, e.sub, tw), tx, ey + 52);
+        } else {
+          ctx.font = `500 13px ${FONT}`;
+          wrapCast(ctx, e.text, tw, 2).forEach((ln, li) => ctx.fillText(ln, tx, ey + 36 + li * 16));
+        }
         ctx.globalAlpha = 1;
       });
       if (cell.entries.length > IMG.maxEntries) {
