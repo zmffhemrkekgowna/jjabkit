@@ -11,7 +11,7 @@ import { fmtDate, fromKey } from "@/lib/casting";
 import { useTodayKST } from "@/lib/useToday";
 import { useMySched } from "@/lib/mySched";
 import { NO_CAST, castNames, eventsOnDate, groupByDate, groupByTime, shiftDate, validDate } from "@/lib/today";
-import { readableOn } from "@/lib/color";
+import { readableText } from "@/lib/color";
 import { showColor } from "@/lib/mySchedule";
 import HomeTabs from "./HomeTabs";
 import AdSenseBanner from "./ads/AdSenseBanner";
@@ -69,7 +69,7 @@ export default function TodayView({ shows, events = [], serverToday }: { shows: 
                       <li key={s.id} className="relative flex min-h-[3.5rem] border-b border-line last:border-b-0 hover:bg-hit">
                         {/* 줄 전체를 누르면 회차 상세로. 이벤트 배지(링크)만 그 위에서 따로 눌려요. */}
                         <Link href={`/shows/${show.id}?d=${s.date}&s=${s.id}`} aria-label={`${show.title} ${s.time} 회차 상세`} className="absolute inset-0" />
-                        <div className="pointer-events-none flex w-[32%] min-w-[6.25rem] max-w-[13rem] shrink-0 items-center px-3 py-2.5" style={{ backgroundColor: bg, color: readableOn(bg) }}>
+                        <div className="pointer-events-none flex w-[32%] min-w-[6.25rem] max-w-[13rem] shrink-0 items-center px-3 py-2.5" style={{ backgroundColor: bg, color: readableText(bg) }}>
                           <h3 className="break-keep text-[15px] font-medium leading-snug">{show.title}{show.genre !== "뮤지컬" && <span className="ml-1 whitespace-nowrap text-xs font-normal opacity-80">- {show.genre}</span>}</h3>
                         </div>
                         <div className="pointer-events-none flex min-w-0 flex-1 items-center gap-2 px-3 py-2.5">
