@@ -1,10 +1,11 @@
 import type { Session, Show } from "@/types/show";
+import { isHex6 } from "./color";
 
 export interface MyItem { show: Show; session: Session; hit: string[] }
 export interface Appearance { show: Show; roleName: string; count: number }
 
-/** 공연 대표색(포스터 그라데이션의 가운데 색). 달력 태그 왼쪽 띠에 써서 공연을 구분해요. */
-export const showColor = (s: Pick<Show, "grad">) => s.grad.split(",")[1] ?? "#888";
+/** 공연 대표색. 관리자가 정한 스케줄 색이 있으면 그 색, 없으면 포스터 그라데이션의 가운데 색이에요. 달력 카드 색으로 써서 공연을 구분해요. */
+export const showColor = (s: Pick<Show, "grad"> & { color?: string }) => (s.color && isHex6(s.color) ? s.color : s.grad.split(",")[1] ?? "#888");
 
 /** 관심 배우(names) 중 한 명이라도 출연하는 모든 공연의 회차를 날짜순으로 모아요. */
 export function buildMySchedule(shows: Show[], names: Set<string>): MyItem[] {
