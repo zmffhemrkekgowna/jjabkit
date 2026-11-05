@@ -16,7 +16,7 @@ export default function Error({ error, reset }: { error: Error & { digest?: stri
       </div>
       <details className="mt-8 text-left text-xs text-mute">
         <summary className="cursor-pointer text-center">운영자용 안내</summary>
-        <p className="mt-2">Vercel의 Environment Variables(<code>NEXT_PUBLIC_SUPABASE_URL</code>, <code>NEXT_PUBLIC_SUPABASE_ANON_KEY</code>)와 Supabase에서 SQL(supabase/migrations의 0001~0008) 실행 여부를 확인해 주세요. 자세한 내용은 DEPLOY.md에 있어요.</p>
+        <p className="mt-2">Vercel의 Environment Variables(<code>NEXT_PUBLIC_SUPABASE_URL</code>, <code>NEXT_PUBLIC_SUPABASE_ANON_KEY</code>)와 Supabase에서 SQL(supabase/migrations의 0001~0009) 실행 여부를 확인해 주세요. 자세한 내용은 DEPLOY.md에 있어요.</p>
         {error.digest && <p className="mt-1">오류 번호: <span className="select-all font-mono">{error.digest}</span></p>}
       </details>
     </main>
