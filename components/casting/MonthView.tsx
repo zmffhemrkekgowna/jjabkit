@@ -1,6 +1,6 @@
 "use client";
 
-import { Star } from "lucide-react";
+import SlotCard from "./SlotCard";
 import { DOW, actorOf, addDays, fmtDate, matches, toKey, visibleOn, type ShowIndex } from "@/lib/casting";
 import type { EventItem } from "@/types/event";
 import { isHex6, readableOn } from "@/lib/color";
@@ -8,6 +8,8 @@ import { isHex6, readableOn } from "@/lib/color";
 interface Props {
   idx: ShowIndex; cursor: Date; sel: Set<string>; only: boolean; today: string;
   events?: EventItem[];
+  /** 공연별 스케줄 색: 이 달력의 모든 회차 카드에 같은 색을 써요 */
+  color?: string;
   onOpen: (date: string, sid?: string) => void;
   onOpenEvent?: (e: EventItem) => void;
 }
@@ -36,7 +38,7 @@ export function weekBars(events: EventItem[], keys: string[], inMonth: boolean[]
   return { bars, lanes: ends.length };
 }
 
-export default function MonthView({ idx, cursor, sel, only, today, events = [], onOpen, onOpenEvent }: Props) {
+export default function MonthView({ idx, cursor, sel, only, today, events = [], color, onOpen, onOpenEvent }: Props) {
   const first = new Date(cursor.getFullYear(), cursor.getMonth(), 1);
   const last = new Date(cursor.getFullYear(), cursor.getMonth() + 1, 0);
   const days: Date[] = [];
@@ -66,7 +68,7 @@ export default function MonthView({ idx, cursor, sel, only, today, events = [], 
                     const isToday = k === today;
                     const dateCls = !inMonth[i] ? "opacity-30" : day.getDay() === 0 ? "text-brand" : "";
                     return (
-                      <div key={k} role="gridcell" className={`flex min-h-[4.75rem] min-w-0 flex-col gap-0.5 px-0.5 pb-0.5 sm:min-h-[6.5rem] sm:gap-1 sm:px-1 sm:pb-1 ${!inMonth[i] ? "bg-bg" : hit > 0 ? "bg-hit" : "bg-card"}`}>
+                      <div key={k} role="gridcell" className={`flex min-h-[3.75rem] min-w-0 flex-col gap-0.5 px-0.5 pb-0.5 sm:min-h-[5rem] sm:gap-1 sm:px-1 sm:pb-1 ${!inMonth[i] ? "bg-bg" : hit > 0 ? "bg-hit" : "bg-card"}`}>
                         <span className="flex h-5 shrink-0 items-center justify-center">
                           <span className={`inline-flex h-5 min-w-5 items-center justify-center rounded-full px-1 text-[11px] tabular-nums sm:text-xs ${isToday && inMonth[i] ? "bg-brand font-bold text-onbrand" : dateCls}`}>{day.getDate()}</span>
                         </span>
@@ -74,17 +76,7 @@ export default function MonthView({ idx, cursor, sel, only, today, events = [], 
                         {list.map((s) => {
                           const ok = sel.size > 0 && matches(idx, s, sel);
                           const all = idx.roles.map((r) => actorOf(idx, s.cast[r.id]).n);
-                          const names = all.slice(0, 3), more = all.length > names.length;
-                          return (
-                            <button key={s.id} onClick={() => onOpen(k, s.id)} aria-label={`${fmtDate(day)} ${s.time} ${all.join(", ")}, 전체 출연진 보기`} title={all.join(" / ")}
-                              className={`block w-full min-w-0 rounded-md border px-0.5 py-0.5 text-left leading-tight transition-colors sm:px-1.5 sm:py-1 ${ok ? "border-brand bg-brand text-onbrand" : `border-line bg-bg hover:border-brand ${sel.size > 0 ? "opacity-40" : ""}`}`}>
-                              <span className="flex flex-wrap items-center gap-x-0.5 text-[9px] font-bold tabular-nums opacity-80 sm:gap-x-1 sm:text-[10px]">
-                                {s.time}{s.curtain && <Star size={9} aria-hidden />}
-                              </span>
-                              {names.map((n, j) => <span key={j} className="block truncate text-[9px] font-medium leading-[1.2] sm:text-[10px]">{n}</span>)}
-                              {more && <span aria-hidden className="block text-[9px] font-bold leading-none opacity-70 sm:text-[10px]">…</span>}
-                            </button>
-                          );
+                          return <SlotCard key={s.id} color={color} time={s.time} star={s.curtain} all={all} state={sel.size > 0 ? (ok ? "hit" : "dim") : "normal"} onClick={() => onOpen(k, s.id)} ariaLabel={`${fmtDate(day)} ${s.time} ${all.join(", ")}, 전체 출연진 보기`} />;
                         })}
                       </div>
                     );
