@@ -7,7 +7,7 @@ const config: Config = {
       fontFamily: { serif: ['"Noto Serif KR"', "Georgia", "serif"] },
       colors: {
         bg: "var(--bg)", card: "var(--card)", ink: "var(--ink)", mute: "var(--mute)", line: "var(--line)",
-        brand: "var(--brand)", onbrand: "var(--onbrand)", hit: "var(--hit)", gold: "var(--gold)",
+        brand: "var(--brand)", onbrand: "var(--onbrand)", hit: "var(--hit)", slot: "var(--slot)", onslot: "var(--onslot)", gold: "var(--gold)",
       },
     },
   },
