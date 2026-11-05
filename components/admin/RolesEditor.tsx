@@ -24,13 +24,13 @@ export default function RolesEditor({ show, run }: { show: Show; run: Run }) {
           <div key={r.id} className="rounded-xl border border-line p-3">
             <div className="flex items-center gap-2">
               <TextInput value={r.name} onCommit={(v) => v.trim() && run((db) => renameRole(db, r.id, v.trim()))} aria-label="배역명" className={`${inp} font-bold`} />
-              <button onClick={() => run((db) => deleteRole(db, r.id), "배역을 삭제했어요. 해당 배역의 회차 캐스팅도 함께 지워졌어요.")} aria-label={`${r.name} 배역 삭제`} className={iconBtn}><Trash2 size={16} aria-hidden /></button>
+              <button onClick={() => run((db) => deleteRole(db, r.id), "배역을 삭제했어요. 해당 배역의 회차 캐스팅도 함께 지워졌어요.")} aria-label={`${r.name} 배역 삭제`} className={`${iconBtn} gap-1.5 border-red-300 px-3 text-red-600 sm:border-line sm:px-2 sm:text-mute`}><Trash2 size={16} aria-hidden /><span className="text-sm sm:hidden">삭제</span></button>
             </div>
             <div className="mt-2 flex flex-wrap gap-1.5">
               {r.actors.map((a) => (
                 <span key={a.id} className="inline-flex items-center rounded-full border border-line bg-bg pl-3 pr-1">
                   <TextInput value={a.n} onCommit={(v) => v.trim() && run((db) => renameCastMember(db, a.id, v.trim()))} aria-label="배우 이름" size={Math.max(a.n.length, 2) + 1} className="bg-transparent text-sm" />
-                  <button onClick={() => run((db) => deleteCastMember(db, a.id), "배우를 삭제했어요. 출연 회차는 '미정'으로 바뀌었어요.")} aria-label={`${a.n} 삭제`} className="rounded-full p-1.5 text-mute hover:text-brand"><X size={12} aria-hidden /></button>
+                  <button onClick={() => run((db) => deleteCastMember(db, a.id), "배우를 삭제했어요. 출연 회차는 '미정'으로 바뀌었어요.")} aria-label={`${a.n} 삭제`} className="flex h-9 w-9 items-center justify-center rounded-full text-mute hover:text-brand sm:h-auto sm:w-auto sm:p-1.5"><X size={12} aria-hidden /></button>
                 </span>
               ))}
             </div>
@@ -43,6 +43,9 @@ export default function RolesEditor({ show, run }: { show: Show; run: Run }) {
           </div>
         ))}
       </div>
+      {show.roles.length > 0 && (
+        <button onClick={() => run((db) => addRole(db, show.id, "새 배역", show.roles.length))} className={`${ghost} mt-3 w-full justify-center sm:hidden`}><Plus size={14} aria-hidden />배역 추가</button>
+      )}
     </Sec>
   );
 }
