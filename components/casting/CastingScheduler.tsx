@@ -18,9 +18,11 @@ interface Props {
   idx: ShowIndex; sel: Set<string>; only: boolean; setOnly: (v: boolean) => void;
   toggle: (id: string) => void; selectMany: (ids: string[]) => void; reset: () => void; onOpen: (date: string, sid?: string) => void;
   events?: EventItem[]; onOpenEvent?: (e: EventItem) => void;
+  /** 공연별 스케줄 색(달력 카드·PNG에 써요) */
+  color?: string;
 }
 
-export default function CastingScheduler({ showTitle, idx, sel, only, setOnly, toggle, selectMany, reset, onOpen, events = [], onOpenEvent }: Props) {
+export default function CastingScheduler({ showTitle, idx, sel, only, setOnly, toggle, selectMany, reset, onOpen, events = [], onOpenEvent, color }: Props) {
   const [view, setView] = useState<"month" | "week">("month");
   const [cursor, setCursor] = useState<Date>(idx.start);
   const [note, setNote] = useState("");
@@ -87,13 +89,13 @@ export default function CastingScheduler({ showTitle, idx, sel, only, setOnly, t
       {idx.sessions.length === 0 && <p className="rounded-xl border border-line bg-card p-3 text-sm text-mute">아직 등록된 회차가 없어요. 회차가 올라오면 여기서 캐스팅을 볼 수 있어요.</p>}
 
       <ShareBar
-        build={() => castingSpec(showTitle, idx, cursor, sel, only)}
+        build={() => castingSpec(showTitle, idx, cursor, sel, only, color)}
         fileBase={`${showTitle}-${cursor.getFullYear()}-${String(cursor.getMonth() + 1).padStart(2, "0")}`}
         shareTitle={`${showTitle} 캐스팅`} shareText={`${showTitle} ${cursor.getFullYear()}년 ${cursor.getMonth() + 1}월 캐스팅 스케줄`} withUrl
       />
 
       {view === "month"
-        ? <MonthView idx={idx} cursor={cursor} sel={sel} only={only} today={today} events={events} onOpen={onOpen} onOpenEvent={onOpenEvent} />
+        ? <MonthView color={color} idx={idx} cursor={cursor} sel={sel} only={only} today={today} events={events} onOpen={onOpen} onOpenEvent={onOpenEvent} />
         : <WeekView idx={idx} cursor={cursor} sel={sel} only={only} onOpen={onOpen} />}
 
     </>
