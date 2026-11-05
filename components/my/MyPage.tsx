@@ -12,6 +12,7 @@ import { useMySched } from "@/lib/mySched";
 import { todayKST } from "@/lib/period";
 import { useNowKST, useTodayKST } from "@/lib/useToday";
 import { appearancesOf, buildMySchedule, showColor, type MyItem } from "@/lib/mySchedule";
+import { readableText } from "@/lib/color";
 import Avatar from "../ui/Avatar";
 import { HeartButton } from "../ui/HeartButton";
 import { CurtainTag } from "../ui/Tags";
@@ -249,13 +250,13 @@ export default function MyPage({ shows }: { shows: Show[] }) {
                             <span className={`px-0.5 text-[11px] tabular-nums sm:text-xs ${!inMonth ? "opacity-30" : day.getDay() === 0 ? "text-brand" : ""}`}>{day.getDate()}</span>
                             {list.map((i) => (
                               <button key={i.show.id + i.session.id} onClick={() => open(i)} aria-label={`${fmtDate(day)} ${i.session.time} ${i.show.title} ${i.hit.join(", ")}`}
-                                className="block w-full min-w-0 rounded-md border border-l-2 border-line bg-bg px-0.5 py-0.5 text-left leading-tight hover:border-brand sm:border-l-4 sm:px-1.5 sm:py-1" style={{ borderLeftColor: showColor(i.show) }}>
-                                <span className="flex flex-wrap items-center gap-x-0.5 text-[9px] font-bold tabular-nums opacity-80 sm:gap-x-1 sm:text-[10px]">
+                                className="block w-full min-w-0 rounded-md px-1 py-1 text-left leading-tight hover:brightness-110 sm:px-1.5" style={{ background: showColor(i.show), color: readableText(showColor(i.show)) }}>
+                                <span className="flex flex-wrap items-center gap-x-0.5 text-[11px] font-bold tabular-nums sm:gap-x-1 sm:text-xs">
                                   {i.session.time}{i.session.curtain && <Star size={9} aria-hidden />}
                                 </span>
-                                <span className="hidden truncate text-[11px] font-bold text-brand sm:block">{i.hit.join(" · ")}</span>
-                                {i.hit.map((n) => <span key={n} className="block truncate text-[10px] font-bold text-brand sm:hidden">{n}</span>)}
-                                <span className="hidden truncate text-[10px] text-mute sm:block">{i.show.title}</span>
+                                <span className="hidden truncate text-[11px] font-bold sm:block">{i.hit.join(" · ")}</span>
+                                {i.hit.map((n) => <span key={n} className="block truncate text-[10px] font-bold sm:hidden">{n}</span>)}
+                                <span className="hidden truncate text-[10px] sm:block">{i.show.title}</span>
                               </button>
                             ))}
                           </div>
@@ -274,7 +275,7 @@ export default function MyPage({ shows }: { shows: Show[] }) {
                     <div className="grid gap-2 sm:grid-cols-2">
                       {byDate.get(k)!.map((i) => (
                         <button key={i.show.id + i.session.id} onClick={() => open(i)}
-                          className="rounded-xl border border-l-4 border-line bg-card p-3 text-left hover:border-brand" style={{ borderLeftColor: showColor(i.show) }}>
+                          className="rounded-xl border border-l-4 border-line bg-card p-3 text-left hover:border-brand" style={{ background: showColor(i.show), color: readableText(showColor(i.show)) }}>
                           <div className="flex flex-wrap items-center gap-1.5">
                             <span className="font-bold tabular-nums">{i.session.time}</span>
                             {i.session.curtain && <CurtainTag />}
