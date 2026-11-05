@@ -1,3 +1,4 @@
+import { isHex6 } from "./color";
 import type { Genre, Show } from "@/types/show";
 import { statusOf } from "./status";
 
@@ -18,7 +19,7 @@ export interface BackupSession { date: string; time: string; curtain: boolean; t
 export interface BackupRole { name: string; short: string; actors: string[] }
 export interface BackupShow {
   title: string; genre: Genre; status: Status; start: string; end: string; venue: string; region: string;
-  age: string; run: string; eb: string; grad: string; img: string; roles: BackupRole[]; sessions: BackupSession[];
+  age: string; run: string; eb: string; grad: string; /** 스케줄 색(#rrggbb). 없으면 빈 문자열 */ color: string; img: string; roles: BackupRole[]; sessions: BackupSession[];
 }
 export interface BackupFile { app: typeof BACKUP_APP; version: number; exportedAt: string; shows: BackupShow[] }
 
@@ -33,7 +34,7 @@ export function buildBackup(shows: Show[], now = new Date()): BackupFile {
       s.roles.forEach((r) => r.actors.forEach((a) => actorName.set(a.id, a.n)));
       return {
         title: s.title, genre: s.genre, status: (statusOf(s) === "upcoming" ? "upcoming" : "running") as Status, start: s.start, end: s.end, venue: s.venue, region: s.region,
-        age: s.age, run: s.run, eb: s.eb, grad: s.grad, img: s.img,
+        age: s.age, run: s.run, eb: s.eb, grad: s.grad, color: s.color, img: s.img,
         roles: s.roles.map((r) => ({ name: r.name, short: r.short, actors: r.actors.map((a) => a.n) })),
         sessions: [...s.sessions]
           .sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time))
@@ -106,6 +107,8 @@ export function parseBackup(text: string): ParseResult {
     if (img && !/^https?:\/\//i.test(img)) err(where, "포스터 주소는 http:// 또는 https:// 로 시작해야 해요.");
     let grad = str(rs.grad, where, "포스터 색", { max: 100 });
     if (grad && !PALETTE.test(grad)) { err(where, "포스터 색 형식이 잘못됐어요."); grad = ""; }
+    let color = str(rs.color, where, "스케줄 색", { max: 20 });
+    if (color && !isHex6(color)) { err(where, "스케줄 색은 #rrggbb 형식이어야 해요."); color = ""; }
 
     const roles: BackupRole[] = [];
     const actorsByRole = new Map<string, Set<string>>();
@@ -168,7 +171,7 @@ export function parseBackup(text: string): ParseResult {
       title, genre: genre as Genre, status: status as Status, start, end,
       venue: str(rs.venue, where, "극장"), region: str(rs.region, where, "지역") || "서울",
       age: str(rs.age, where, "관람 등급"), run: str(rs.run, where, "러닝타임"), eb: str(rs.eb, where, "얼리버드 안내", { max: 500 }),
-      grad: grad || DEFAULT_GRAD, img, roles, sessions,
+      grad: grad || DEFAULT_GRAD, color, img, roles, sessions,
     });
   });
 
