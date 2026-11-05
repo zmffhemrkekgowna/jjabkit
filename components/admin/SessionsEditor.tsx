@@ -7,6 +7,7 @@ import { bulkUpdateSessions, deleteSessions, restoreNote, restoreSessions, saveS
 import { bySlot, planTimeChange } from "@/lib/bulkSessions";
 import { useDirty } from "./dirty";
 import TimeInput from "./TimeInput";
+import CastField from "./CastField";
 import { DOW, addDays, fmtDate, fromKey, toKey } from "@/lib/casting";
 import type { EventItem } from "@/types/event";
 import { weekBars } from "@/components/casting/MonthView";
@@ -16,15 +17,9 @@ import { isHex6, readableOn } from "@/lib/color";
 import { planRepeat } from "@/lib/repeatSessions";
 import { Fld, Sec, btn, friendly, ghost, iconBtn, inp, showToast, undoAction, type Notify, type Run } from "./shared";
 
-/** 배역 하나의 배우 고르기. 회차 한 줄(표)에서도, 입력 폼에서도 같은 모양이에요. */
+/** 배역 하나의 배우 고르기. PC는 드롭다운, 모바일은 카드 + 아래에서 올라오는 선택 패널이에요(CastField). */
 const castSelect = (r: Role, value: string, onChange: (v: string) => void, compact = false) => (
-  <label key={r.id} className={`flex items-center gap-1.5 text-xs text-mute ${compact ? "min-w-[9.5rem] flex-1" : ""}`}>
-    <span className={`shrink-0 truncate ${compact ? "w-12" : "w-16"}`} title={r.name}>{compact ? r.short || r.name : r.name}</span>
-    <select value={value} onChange={(e) => onChange(e.target.value)} aria-label={`${r.name} 배우`} className={inp}>
-      <option value="">미정</option>
-      {r.actors.map((a) => <option key={a.id} value={a.id}>{a.n}</option>)}
-    </select>
-  </label>
+  <CastField key={r.id} role={r} value={value} onChange={onChange} compact={compact} />
 );
 
 const caption = (show: Show, s: Session) => {
@@ -46,15 +41,23 @@ function SessionRow({ show, s, run, picked, onPick }: { show: Show; s: Session; 
 
   return (
     <li className={`rounded-xl border border-l-4 p-2.5 ${picked ? "border-brand bg-hit" : "border-line"}`} style={{ borderLeftColor: showColor(show) }}>
-      <div className="flex flex-wrap items-center gap-2">
-        <label className="-m-1.5 flex h-11 w-11 shrink-0 cursor-pointer items-center justify-center"><input type="checkbox" checked={picked} onChange={(e) => onPick(e.target.checked)} aria-label={`${s.date} ${s.time} 회차 선택`} className="h-5 w-5 accent-[var(--brand)]" /></label>
-        <input type="date" value={dt.date} onChange={(e) => setDt({ ...dt, date: e.target.value })} onBlur={commitDateTime} aria-label="날짜" className={`${inp} !w-auto`} />
-        <span aria-hidden className="w-4 text-xs text-mute">{dt.date ? DOW[fromKey(dt.date).getDay()] : ""}</span>
-        <div className="w-24"><TimeInput value={dt.time} onChange={(v) => setDt((d) => ({ ...d, time: v }))} onBlur={() => setTimeout(() => commitRef.current(), 0)} label="시간" /></div>
-        <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-3 gap-y-1.5">
-          {show.roles.map((r) => castSelect(r, s.cast[r.id] ?? "", (v) => save({ cast: { ...s.cast, [r.id]: v } }), true))}
+      <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:gap-2">
+        {/* 1) 회차 날짜·시간 (PC에서는 예전처럼 한 줄로 이어져요) */}
+        <div className="flex flex-wrap items-center gap-2 sm:contents">
+          <label className="-m-1.5 flex h-11 w-11 shrink-0 cursor-pointer items-center justify-center"><input type="checkbox" checked={picked} onChange={(e) => onPick(e.target.checked)} aria-label={`${s.date} ${s.time} 회차 선택`} className="h-5 w-5 accent-[var(--brand)]" /></label>
+          <input type="date" value={dt.date} onChange={(e) => setDt({ ...dt, date: e.target.value })} onBlur={commitDateTime} aria-label="날짜" className={`${inp} min-w-0 flex-1 sm:!w-auto sm:flex-none`} />
+          <span aria-hidden className="w-4 text-xs text-mute">{dt.date ? DOW[fromKey(dt.date).getDay()] : ""}</span>
+          <div className="w-24"><TimeInput value={dt.time} onChange={(v) => setDt((d) => ({ ...d, time: v }))} onBlur={() => setTimeout(() => commitRef.current(), 0)} label="시간" /></div>
         </div>
-        <button onClick={del} aria-label="회차 삭제" className={`${iconBtn} ml-auto`}><Trash2 size={16} aria-hidden /></button>
+        {/* 2) 캐스팅: 모바일은 배역마다 카드 하나(배역명 + 배우), 배우를 고르면 바로 저장돼요 */}
+        <div className="min-w-0 border-t border-line pt-3 sm:flex-1 sm:border-0 sm:p-0">
+          <p className="mb-2 text-xs font-bold text-mute sm:hidden">캐스팅 <span className="font-normal">· 배우를 고르면 바로 저장돼요</span></p>
+          <div className="grid grid-cols-1 gap-2 min-[480px]:grid-cols-2 sm:flex sm:flex-wrap sm:items-center sm:gap-x-3 sm:gap-y-1.5">
+            {show.roles.map((r) => castSelect(r, s.cast[r.id] ?? "", (v) => save({ cast: { ...s.cast, [r.id]: v } }), true))}
+          </div>
+        </div>
+        {/* 3) 삭제: 모바일에서는 글자가 있는 붉은 버튼으로, 배우 선택과 구분해요 */}
+        <button onClick={del} aria-label="회차 삭제" className={`${iconBtn} gap-1.5 self-end border-red-300 px-3 text-red-600 sm:ml-auto sm:self-auto sm:border-line sm:px-2 sm:text-mute`}><Trash2 size={16} aria-hidden /><span className="text-sm sm:hidden">회차 삭제</span></button>
       </div>
     </li>
   );
