@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type ChangeEvent } from "react";
+import { useEffect, useRef, useState, type ChangeEvent } from "react";
 import type { Genre, Show } from "@/types/show";
 import { dateProblem, statusOf } from "@/lib/status";
 import { useTodayKST } from "@/lib/useToday";
@@ -8,6 +8,61 @@ import { StatusTag } from "../ui/Tags";
 import { updateShow, uploadPoster } from "@/lib/db/shows";
 import Poster from "../ui/Poster";
 import { Fld, PALETTES, Sec, TextInput, inp, type Run } from "./shared";
+import SlotCard from "../casting/SlotCard";
+import { SHOW_COLORS, isHex6, readableText } from "@/lib/color";
+import { showColor } from "@/lib/mySchedule";
+
+/** 입력값을 '#rrggbb'로 정리해요. '#'은 없어도 되고 3자리(#f80)도 받아요. 형식이 틀리면 빈 문자열이에요. */
+const normHex = (v: string) => {
+  const t = v.trim().replace(/^#/, "");
+  const six = /^[0-9a-fA-F]{3}$/.test(t) ? t.split("").map((c) => c + c).join("") : t;
+  return /^[0-9a-fA-F]{6}$/.test(six) ? `#${six.toLowerCase()}` : "";
+};
+
+/** 공연별 스케줄 색. 팔레트·색상 선택기·HEX 입력 중 편한 걸로 고르면 바로 저장돼요. 이 색이 달력의 이 공연 회차 카드 전체에 쓰여요. */
+function ScheduleColor({ show, upd }: { show: Show; upd: (patch: { color: string }, msg?: string) => unknown }) {
+  const saved = show.color ?? "";
+  const eff = showColor(show); // 저장된 색이 없으면 포스터 색이 대신 쓰여요
+  const [draft, setDraft] = useState(eff);
+  const [text, setText] = useState(saved);
+  const [bad, setBad] = useState(false);
+  const last = useRef(""); // 방금 저장 요청한 색(같은 색을 두 번 저장하지 않으려고)
+  useEffect(() => { last.current = ""; setDraft(showColor(show)); setText(show.color ?? ""); setBad(false); }, [show.color, show.grad]); // eslint-disable-line react-hooks/exhaustive-deps
+  const commit = (hex: string) => { setBad(false); setDraft(hex); setText(hex); if (hex.toLowerCase() !== saved.toLowerCase() && hex.toLowerCase() !== last.current) { last.current = hex.toLowerCase(); upd({ color: hex }, "스케줄 색을 저장했어요."); } };
+  // 색상 선택기는 드래그하는 동안 값이 계속 바뀌므로, 멈춘 뒤(0.6초)에 한 번만 저장해요.
+  useEffect(() => {
+    if (!isHex6(draft) || draft.toLowerCase() === (saved || eff).toLowerCase() || draft.toLowerCase() === last.current) return;
+    const t = setTimeout(() => commit(draft), 600);
+    return () => clearTimeout(t);
+  }, [draft]); // eslint-disable-line react-hooks/exhaustive-deps
+  const preview = isHex6(draft) ? draft : eff;
+  return (
+    <div className="mt-3 rounded-xl bg-bg p-3" role="group" aria-label="스케줄 색상">
+      <p className="text-sm font-medium">스케줄 색상 <span className="text-xs font-normal text-mute">달력에서 이 공연의 회차 카드에 쓰여요</span></p>
+      <div className="mt-2 flex flex-wrap items-center gap-2">
+        {SHOW_COLORS.map((c) => (
+          <button key={c.hex} onClick={() => commit(c.hex)} aria-label={`스케줄 색 ${c.name}`} aria-pressed={saved.toLowerCase() === c.hex} title={c.name}
+            className={`h-8 w-8 rounded-full border-2 ${saved.toLowerCase() === c.hex ? "border-ink ring-2 ring-[var(--brand)]" : "border-line"}`} style={{ background: c.hex }} />
+        ))}
+      </div>
+      <div className="mt-2 flex flex-wrap items-center gap-2">
+        <input type="color" value={preview} onChange={(e) => setDraft(e.target.value)} aria-label="스케줄 색상 선택기" className="h-9 w-12 cursor-pointer rounded border border-line bg-card p-0.5" />
+        <label className="flex items-center gap-1 text-xs text-mute">HEX
+          <input value={text} onChange={(e) => { setText(e.target.value); setBad(false); }} aria-label="스케줄 색 HEX 코드" aria-invalid={bad} placeholder="#ea580c" maxLength={7}
+            onBlur={() => { const h = normHex(text); if (!text.trim()) return; if (h) commit(h); else setBad(true); }}
+            onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }}
+            className={`${inp} !w-28 font-mono ${bad ? "border-brand" : ""}`} />
+        </label>
+        {saved && <button onClick={() => { setDraft(showColor({ grad: show.grad })); setText(""); upd({ color: "" }, "스케줄 색을 포스터 색으로 되돌렸어요."); }} className="text-xs text-mute underline">포스터 색으로 되돌리기</button>}
+        <div className="w-28" aria-label="미리보기">
+          <SlotCard as="span" color={preview} time="19:30" all={["홍길동", "김철수", "이영희"]} />
+        </div>
+      </div>
+      {bad && <p role="alert" className="mt-1 text-xs font-medium text-brand">색 코드는 #ea580c 같은 6자리 HEX로 입력해 주세요.</p>}
+      <p className="mt-1 text-xs text-mute">{saved ? `선택한 색 ${saved}` : "아직 고르지 않았어요. 지금은 포스터 색이 쓰여요."} · 글자색은 배경에 맞춰 자동으로 정해져요({readableText(preview) === "#ffffff" ? "흰색" : "어두운색"}).</p>
+    </div>
+  );
+}
 
 export default function ShowForm({ show, run }: { show: Show; run: Run }) {
   const upd = (patch: Parameters<typeof updateShow>[2], msg?: string) => run((db) => updateShow(db, show.id, patch), msg);
@@ -53,6 +108,7 @@ export default function ShowForm({ show, run }: { show: Show; run: Run }) {
         </div>
       </div>
       <p className="mt-2 text-xs text-mute">파일을 고르면 Supabase 저장소(posters)에 올라가요. 이미지가 없으면 기본 포스터가 보여요.</p>
+      <ScheduleColor show={show} upd={upd} />
 
       <div className="mt-3 grid gap-3 sm:grid-cols-2">
         <Fld label="공연명" className="sm:col-span-2"><TextInput value={show.title} onCommit={(v) => upd({ title: v })} className={inp} /></Fld>
