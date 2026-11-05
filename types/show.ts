@@ -29,6 +29,8 @@ export interface Show {
   run: string;
   eb: string;
   grad: string;
+  /** 달력·일정 카드에 쓰는 공연별 스케줄 색(#rrggbb). 비어 있으면 포스터 색을 대신 써요. 회차마다 따로 저장하지 않아요. */
+  color: string;
   img: string;
   /** 기본 포스터에 얹는 글자 (공연명을 공백으로 나눔) */
   poster: string[];
@@ -37,7 +39,7 @@ export interface Show {
 }
 
 export type ShowPatch = Partial<
-  Pick<Show, "title" | "genre" | "start" | "end" | "venue" | "region" | "age" | "run" | "eb" | "grad" | "img">
+  Pick<Show, "title" | "genre" | "start" | "end" | "venue" | "region" | "age" | "run" | "eb" | "grad" | "img" | "color">
 >;
 
 export interface SessionInput {
