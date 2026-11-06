@@ -26,7 +26,8 @@ export default function MySchedCalendar({ items, now, today, onRemove, onOpenSes
   const [selDate, setSelDate] = useState<string | null>(today);
   const [detail, setDetail] = useState<string | null>(null); // session id
   const watched = useWatched();
-  const isWatched = (i: Item) => watched.has({ show: i.show.title, date: i.session.date, time: i.session.time });
+  const refOf = (i: Item) => ({ sessionId: i.session.id, showId: i.show.id, show: i.show.title, date: i.session.date, time: i.session.time });
+  const isWatched = (i: Item) => watched.has(refOf(i));
 
   const byDate = useMemo(() => {
     const m = new Map<string, Item[]>();
@@ -124,7 +125,7 @@ export default function MySchedCalendar({ items, now, today, onRemove, onOpenSes
         </section>
       )}
 
-      {detailItem && <DetailDialog item={detailItem} past={isPast(detailItem)} watched={isWatched(detailItem)} onToggleWatched={() => { const r = { show: detailItem.show.title, date: detailItem.session.date, time: detailItem.session.time }; if (isWatched(detailItem)) watched.unmark(r); else watched.mark({ ...r, showId: detailItem.show.id, actors: castNames(detailItem.show, detailItem.session) }); }} onClose={closeDetail} onRemove={onRemove} onOpenSession={onOpenSession} />}
+      {detailItem && <DetailDialog item={detailItem} past={isPast(detailItem)} watched={isWatched(detailItem)} onToggleWatched={() => { const r = refOf(detailItem); if (isWatched(detailItem)) watched.unmark(r); else watched.mark({ ...r, actors: castNames(detailItem.show, detailItem.session) }); }} onClose={closeDetail} onRemove={onRemove} onOpenSession={onOpenSession} />}
     </div>
   );
 }

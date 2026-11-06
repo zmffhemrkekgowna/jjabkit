@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { Trash2 } from "lucide-react";
-import { useWatched } from "@/lib/watched";
+import { recId, unlinkedOf, useWatched } from "@/lib/watched";
 import { computeStats, type Count } from "@/lib/stats";
 
 function Bars({ rows, unit = "회", max }: { rows: Count[]; unit?: string; max?: number }) {
@@ -23,13 +23,14 @@ function Bars({ rows, unit = "회", max }: { rows: Count[]; unit?: string; max?:
 const card = "rounded-2xl border border-line bg-card p-4";
 
 /** 관극 통계: '관극 완료'로 직접 표시한 회차만 세요. 관심 배우의 출연 일정이나 예정 일정은 들어가지 않아요. */
-export default function StatsPanel() {
+export default function StatsPanel({ shows = [] }: { shows?: { id: string; title: string; sessions?: { id: string; date: string; time: string }[] }[] }) {
   const w = useWatched();
   const [year, setYear] = useState<string | "all">("");
   const [ask, setAsk] = useState<string | null>(null);
   const all = useMemo(() => computeStats(w.records, "all"), [w.records]);
   const y = year && (year === "all" || all.years.includes(year)) ? year : all.years[0] ?? "all";
   const st = useMemo(() => computeStats(w.records, y), [w.records, y]);
+  const unlinked = useMemo(() => unlinkedOf(w.records, shows), [w.records, shows]);
 
   if (w.records.length === 0) {
     return (
@@ -50,6 +51,11 @@ export default function StatsPanel() {
             className={`min-h-[40px] rounded-full border px-3 text-sm ${y === v ? "border-brand bg-brand font-bold text-onbrand" : "border-line text-mute"}`}>{v === "all" ? "전체" : `${v}년`}</button>
         ))}
       </div>
+      {unlinked.length > 0 && (
+        <p role="note" className="rounded-xl border border-line bg-bg p-3 text-xs text-mute">
+          현재 공연 데이터에서 회차를 찾지 못한 기록 {unlinked.length}개가 있어요. 통계에는 그대로 들어가고, 지우지 않고 보관하고 있어요. 공연 데이터가 다시 등록되면 자동으로 이어져요. 아래 기록 목록의 <b>회차 미연결</b> 표시로 확인할 수 있어요.
+        </p>
+      )}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
         <div className={card}><p className="text-xs text-mute">{y === "all" ? "전체 관극" : `${y}년 관극`}</p><p className="text-2xl font-bold text-brand tabular-nums">{st.total}<span className="text-sm text-mute">회</span></p></div>
         <div className={card}><p className="text-xs text-mute">본 공연</p><p className="text-2xl font-bold tabular-nums">{st.byShow.length}<span className="text-sm text-mute">개</span></p></div>
@@ -86,12 +92,12 @@ export default function StatsPanel() {
         <h3 className="mb-2 font-bold">관극 기록 {y === "all" ? w.records.length : st.total}회</h3>
         <ul className="divide-y divide-line text-sm">
           {w.records.filter((r) => y === "all" || r.date.startsWith(y)).slice().reverse().map((r) => {
-            const k = `${r.show}|${r.date}|${r.time}`;
+            const k = recId(r);
             return (
               <li key={k} className="flex items-center gap-2 py-2">
-                <span className="min-w-0 flex-1"><b className="tabular-nums">{r.date} {r.time}</b> · {r.show}<span className="block truncate text-xs text-mute">{r.actors.join(" · ") || "출연진 정보 없음"}</span></span>
+                <span className="min-w-0 flex-1"><b className="tabular-nums">{r.date} {r.time}</b> · {r.show}{unlinked.includes(r) && <span className="ml-1 rounded border border-line px-1 text-[10px] text-mute">회차 미연결</span>}<span className="block truncate text-xs text-mute">{r.actors.join(" · ") || "출연진 정보 없음"}</span></span>
                 {ask === k
-                  ? <><button onClick={() => { w.unmark(r); setAsk(null); }} className="min-h-[44px] rounded-lg bg-brand px-3 text-sm font-bold text-onbrand">기록 삭제</button><button onClick={() => setAsk(null)} className="min-h-[44px] rounded-lg border border-line px-3 text-sm">취소</button></>
+                  ? <><button onClick={() => { w.removeRecord(r); setAsk(null); }} className="min-h-[44px] rounded-lg bg-brand px-3 text-sm font-bold text-onbrand">기록 삭제</button><button onClick={() => setAsk(null)} className="min-h-[44px] rounded-lg border border-line px-3 text-sm">취소</button></>
                   : <button onClick={() => setAsk(k)} aria-label={`${r.date} ${r.show} 관극 기록 삭제`} className="grid h-11 w-11 place-items-center rounded-lg text-mute hover:text-brand"><Trash2 size={15} aria-hidden /></button>}
               </li>
             );

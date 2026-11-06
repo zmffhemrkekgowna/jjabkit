@@ -4,7 +4,7 @@ import { useState } from "react";
 import { ExternalLink, Pencil, Plus, Trash2, X } from "lucide-react";
 import type { Show } from "@/types/show";
 import type { EventItem } from "@/types/event";
-import { createEvent, deleteEvent, deleteEventsOfShow, restoreEvents, updateEvent, type EventInput } from "@/lib/db/events";
+import { createEvent, deleteEvent, restoreEvents, updateEvent, type EventInput } from "@/lib/db/events";
 import { useDirty } from "./dirty";
 import { EVENT_COLORS, isHex6, readableOn } from "@/lib/color";
 import { PHASE_LABEL, isHttpUrl, isRealDate, linkProblem, periodText, phaseOf } from "@/lib/period";
@@ -14,13 +14,12 @@ const EMPTY: EventInput = { title: "", startsOn: "", endsOn: "", linkUrl: "", co
 
 /**
  * 한 공연의 이벤트 관리. 이벤트는 여기서만 만들어요.
- * '이벤트 있음'을 체크해야 입력 영역이 보이고, 끄면 이 공연의 이벤트를 모두 지워 '이벤트 없음' 상태가 돼요.
+ * '이벤트 있음'을 체크해야 입력 영역이 보여요. 끄면 입력 영역만 숨기고 저장된 이벤트는 그대로 둬요.
  */
 export default function ShowEventsEditor({ show, events, run }: { show: Show; events: EventItem[]; run: Run }) {
   const [on, setOn] = useState<boolean | null>(null); // null이면 이벤트가 있는지(데이터)를 따라요
   const checked = on ?? events.length > 0;
-  const [offAsk, setOffAsk] = useState(false);
-  const [editing, setEditing] = useState<string | null>(null);
+    const [editing, setEditing] = useState<string | null>(null);
   const [form, setForm] = useState<EventInput>(EMPTY);
   const [delId, setDelId] = useState<string | null>(null);
   const [err, setErr] = useState("");
@@ -42,15 +41,8 @@ export default function ShowEventsEditor({ show, events, run }: { show: Show; ev
   const shown = (k: keyof typeof fieldErr) => (touched || (k !== "title" && k !== "startsOn" && form[k])) ? fieldErr[k] : "";
   const problem = fieldErr.title || fieldErr.startsOn || fieldErr.endsOn || fieldErr.linkUrl || fieldErr.color;
 
-  const toggle = (v: boolean) => {
-    if (v) { setOn(true); setOffAsk(false); return; }
-    if (events.length > 0) { setOffAsk(true); return; } // 지워질 이벤트가 있으면 먼저 확인
-    setOn(false); reset();
-  };
-  const confirmOff = async () => {
-    const ok = await run((db) => deleteEventsOfShow(db, show.id), "이 공연의 이벤트를 모두 삭제했어요. 이벤트 없음 상태예요.", () => run((db) => restoreEvents(db, events), "삭제한 이벤트를 되살렸어요."));
-    if (ok) { setOn(false); setOffAsk(false); reset(); }
-  };
+  // 체크 해제는 입력 영역을 숨기기만 해요. 저장된 이벤트는 지우지 않아요(삭제는 각 이벤트의 삭제 버튼으로만).
+  const toggle = (v: boolean) => { setOn(v); if (!v) { reset(); setDelId(null); } };
   const save = async () => {
     if (problem) { setTouched(true); setErr(problem); showToast(problem, "error"); return; }
     const ok = await run(
@@ -64,19 +56,15 @@ export default function ShowEventsEditor({ show, events, run }: { show: Show; ev
   const live = events.filter((e) => phaseOf(e) === "active").length;
 
   return (
-    <Sec title="이벤트" right={<span className="text-xs text-mute">{checked ? (events.length ? `${events.length}개 · 진행 중 ${live}개` : "아직 없음") : "이벤트 없음"}</span>}>
+    <Sec title="이벤트" right={<span className="text-xs text-mute">{events.length ? `${events.length}개 · 진행 중 ${live}개${checked ? "" : " (숨김)"}` : checked ? "아직 없음" : "이벤트 없음"}</span>}>
       <label className="inline-flex cursor-pointer items-center gap-2 text-sm font-medium">
         <input type="checkbox" checked={checked} onChange={(e) => toggle(e.target.checked)} className="h-4 w-4 accent-[var(--brand)]" />
         이 공연에 이벤트 있음
       </label>
-      {!checked && <p className="mt-2 text-xs text-mute">체크하면 이벤트(제목, 시작·끝나는 날, 공지 링크)를 등록할 수 있어요. 이벤트는 이 공연의 캐스팅 달력에 기간만큼 이어진 막대로 보여요.</p>}
+      {!checked && events.length === 0 && <p className="mt-2 text-xs text-mute">체크하면 이벤트(제목, 시작·끝나는 날, 공지 링크)를 등록할 수 있어요. 이벤트는 이 공연의 캐스팅 달력에 기간만큼 이어진 막대로 보여요.</p>}
 
-      {offAsk && (
-        <div role="alertdialog" aria-label="이벤트 삭제 확인" className="mt-3 flex flex-wrap items-center gap-2 rounded-xl border border-brand bg-hit p-3 text-sm">
-          <span className="min-w-0 flex-1">체크를 끄면 이 공연의 이벤트 {events.length}개가 삭제돼요. 계속할까요?</span>
-          <button onClick={confirmOff} className={btn}>삭제하고 끄기</button>
-          <button onClick={() => setOffAsk(false)} className={ghost}>취소</button>
-        </div>
+      {!checked && events.length > 0 && (
+        <p role="note" className="mt-2 rounded-lg border border-line bg-bg p-2 text-xs text-mute">이벤트 {events.length}개가 저장돼 있어요. 입력 영역만 숨겼고 삭제되지 않았어요. 다시 체크하면 그대로 보여요. (삭제는 이벤트별 삭제 버튼으로만 돼요)</p>
       )}
 
       {checked && (

@@ -298,7 +298,7 @@ export default function MyPage({ shows }: { shows: Show[] }) {
           </>
         ))}
 
-        {tab === "stats" && <StatsPanel />}
+        {tab === "stats" && <StatsPanel shows={shows} />}
 
         {tab === "sched" && (myItems.length === 0 ? (
           <div className="rounded-2xl border border-line bg-card p-8 text-center">

@@ -1,4 +1,4 @@
-import { cleanRecords, type WatchedRecord } from "./watched";
+import { cleanRecordsDetailed, type WatchedRecord } from "./watched";
 /**
  * '내 하트' 백업(JSON). 하트는 이 브라우저(localStorage)에만 있어서, 브라우저를 바꾸거나 사이트 데이터를 지우면 사라져요.
  * 공연은 id와 제목을 함께 담아, 공연 데이터를 다시 만들어 id가 바뀌었어도 제목으로 찾아 맞춰요.
@@ -32,7 +32,7 @@ export const favBackupFileName = (now = new Date()) => {
 };
 
 export type FavParse =
-  | { ok: true; showIds: string[]; unmatched: string[]; actors: string[]; exportedAt: string; /** null이면 내 일정이 없는 예전 파일 */ sessionIds: string[] | null; unmatchedSessions: number; /** null이면 관극 기록이 없는 예전 파일 */ watched: WatchedRecord[] | null }
+  | { ok: true; showIds: string[]; unmatched: string[]; actors: string[]; exportedAt: string; /** null이면 내 일정이 없는 예전 파일 */ sessionIds: string[] | null; unmatchedSessions: number; /** null이면 관극 기록이 없는 예전 파일 */ watched: WatchedRecord[] | null; /** 날짜·시간 등이 잘못돼 제외한 관극 기록 */ watchedRejected: { index: number; reason: string }[]; /** 제목이 같은 공연이 여럿이라 어느 쪽인지 몰라 연결하지 않은 항목 수 */ ambiguous: number }
   | { ok: false; error: string };
 
 const isObj = (v: unknown): v is Record<string, unknown> => typeof v === "object" && v !== null && !Array.isArray(v);
@@ -49,11 +49,15 @@ export function parseFavBackup(text: string, known: ShowRef[]): FavParse {
   if (raw.shows.length > MAX_ITEMS || raw.actors.length > MAX_ITEMS) return { ok: false, error: `항목이 너무 많아요. (각각 ${MAX_ITEMS}개까지)` };
 
   const byId = new Map(known.map((s) => [s.id, s.id]));
-  const byTitle = new Map(known.map((s) => [s.title, s.id]));
+  const byTitle = new Map<string, string>(), dupTitle = new Set<string>();
+  for (const s of known) { if (byTitle.has(s.title)) dupTitle.add(s.title); else byTitle.set(s.title, s.id); }
+  let ambiguous = 0;
   const showIds = new Set<string>(), unmatched: string[] = [];
   for (const s of raw.shows) {
     if (!isObj(s) || typeof s.id !== "string" || typeof s.title !== "string" || s.title.length > 200) return { ok: false, error: "관심 공연 항목의 형식이 잘못됐어요." };
-    const id = byId.get(s.id) ?? byTitle.get(s.title);
+    let id = byId.get(s.id);
+    if (!id && dupTitle.has(s.title)) { ambiguous++; unmatched.push(s.title); continue; } // 같은 제목의 공연이 여럿이면 임의로 고르지 않아요
+    id = id ?? byTitle.get(s.title);
     if (id) showIds.add(id); else unmatched.push(s.title);
   }
   const actors = new Set<string>();
@@ -66,21 +70,25 @@ export function parseFavBackup(text: string, known: ShowRef[]): FavParse {
   if (raw.mySessions !== undefined) {
     if (!Array.isArray(raw.mySessions)) return { ok: false, error: "내 일정 항목의 형식이 잘못됐어요." };
     if (raw.mySessions.length > MAX_SESSIONS) return { ok: false, error: `내 일정이 너무 많아요. (${MAX_SESSIONS}개까지)` };
-    const knownId = new Set<string>(), byKey = new Map<string, string>();
-    for (const s of known) for (const x of s.sessions ?? []) { knownId.add(x.id); byKey.set(`${s.title}|${x.date}|${x.time}`, x.id); }
+    const knownId = new Set<string>(), byKey = new Map<string, string>(), dupKey = new Set<string>();
+    for (const s of known) for (const x of s.sessions ?? []) { knownId.add(x.id); const k = `${s.title}|${x.date}|${x.time}`; if (byKey.has(k)) dupKey.add(k); else byKey.set(k, x.id); }
     const ids = new Set<string>();
     for (const m of raw.mySessions) {
       if (!isObj(m) || typeof m.id !== "string" || typeof m.show !== "string" || typeof m.date !== "string" || typeof m.time !== "string" || m.show.length > 200 || m.date.length > 10 || m.time.length > 5) return { ok: false, error: "내 일정 항목의 형식이 잘못됐어요." };
-      const id = knownId.has(m.id) ? m.id : byKey.get(`${m.show}|${m.date}|${m.time}`);
+      const key = `${m.show}|${m.date}|${m.time}`;
+      if (!knownId.has(m.id) && dupKey.has(key)) { ambiguous++; unmatchedSessions++; continue; } // 제목·날짜·시간이 같은 회차가 여럿이면 연결하지 않아요
+      const id = knownId.has(m.id) ? m.id : byKey.get(key);
       if (id) ids.add(id); else unmatchedSessions++;
     }
     sessionIds = [...ids];
   }
-  let watched: WatchedRecord[] | null = null;
+  let watched: WatchedRecord[] | null = null, watchedRejected: { index: number; reason: string }[] = [];
   if (raw.watched !== undefined) {
     if (!Array.isArray(raw.watched)) return { ok: false, error: "관극 완료 기록의 형식이 잘못됐어요." };
     if (raw.watched.length > 5000) return { ok: false, error: "관극 완료 기록이 너무 많아요. (5000개까지)" };
-    watched = cleanRecords(raw.watched);
+    // 항목별로 검사해서 잘못된 것만 빼요. 파일 전체를 거부하지 않아요(정상 항목은 그대로 불러와요).
+    const r = cleanRecordsDetailed(raw.watched);
+    watched = r.records; watchedRejected = r.rejected;
   }
-  return { ok: true, showIds: [...showIds], unmatched, actors: [...actors], exportedAt: typeof raw.exportedAt === "string" ? raw.exportedAt : "", sessionIds, unmatchedSessions, watched };
+  return { ok: true, showIds: [...showIds], unmatched, actors: [...actors], exportedAt: typeof raw.exportedAt === "string" ? raw.exportedAt : "", sessionIds, unmatchedSessions, watched, watchedRejected, ambiguous };
 }

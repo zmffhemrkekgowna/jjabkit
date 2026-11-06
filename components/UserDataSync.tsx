@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { useFavorites } from "@/lib/favorites";
 import { useMySched } from "@/lib/mySched";
+import { useWatched } from "@/lib/watched";
 import type { ShowRefLite } from "@/lib/relink";
 
 /**
@@ -16,5 +17,8 @@ export default function UserDataSync({ shows }: { shows: ShowRefLite[] }) {
   const { ready: mReady, reconcile: mineSync } = mine;
   useEffect(() => { if (ready) favSync(shows); }, [ready, favSync, shows]);
   useEffect(() => { if (mReady) mineSync(shows); }, [mReady, mineSync, shows]);
+  // 관극 기록도 회차 id와 이어 줘요. 모호하거나 맞는 회차가 없으면 건드리지 않고 그대로 둬요.
+  const { link } = useWatched();
+  useEffect(() => { link(shows); }, [link, shows]);
   return null;
 }
