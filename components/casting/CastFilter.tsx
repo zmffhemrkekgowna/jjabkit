@@ -113,9 +113,6 @@ export default function CastFilter({ idx, sel, toggle, selectMany, reset, only, 
           {sel.size > 0 ? <>조건에 맞는 회차 <b className="text-brand">{hits}</b> / {idx.sessions.length}회</> : <>전체 {idx.sessions.length}회차</>}
         </p>
         <div className="flex flex-wrap items-center gap-3">
-          <label className="flex min-h-[44px] cursor-pointer items-center gap-2 text-sm">
-            <input type="checkbox" checked={only} onChange={(e) => setOnly(e.target.checked)} className="h-5 w-5 accent-[var(--brand)]" />해당 회차만
-          </label>
           {favIds.length > 0 && (
             <button onClick={() => selectMany(favIds)} className="flex min-h-[44px] items-center gap-1 rounded-lg border border-line px-3 text-sm">
               <Heart size={14} fill="currentColor" aria-hidden />관심 배우만

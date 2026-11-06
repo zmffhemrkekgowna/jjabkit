@@ -39,7 +39,7 @@ export default function DayPanel({ idx, date, sel, only, events = [], onOpen, on
       )}
 
       {list.length === 0 ? (
-        <p className="mt-2 text-sm text-mute">{total === 0 ? "이 날은 공연이 없어요." : "선택한 조건에 맞는 회차가 없어요. ‘해당 회차만’을 끄면 전체 회차가 보여요."}</p>
+        <p className="mt-2 text-sm text-mute">{total === 0 ? "이 날은 공연이 없어요." : "선택한 조건에 맞는 회차가 없어요. 배우 선택을 해제하면 전체 회차가 보여요."}</p>
       ) : (
         <ul className="mt-2 space-y-2">
           {list.map((s) => {

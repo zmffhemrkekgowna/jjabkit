@@ -56,7 +56,7 @@ export function matches(idx: ShowIndex, s: Session, sel: Set<string>): boolean {
 
 export function visibleOn(idx: ShowIndex, dateKey: string, sel: Set<string>, only: boolean): Session[] {
   const all = idx.byDate.get(dateKey) ?? [];
-  return only && sel.size > 0 ? all.filter((s) => matches(idx, s, sel)) : all;
+  return sel.size > 0 ? all.filter((s) => matches(idx, s, sel)) : all;
 }
 
 /** 필터를 반영한 회차 목록(날짜·시간순). */

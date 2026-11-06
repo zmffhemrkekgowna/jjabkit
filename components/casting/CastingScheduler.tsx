@@ -100,7 +100,6 @@ export default function CastingScheduler({ showTitle, idx, sel, only, setOnly, t
       {filtering && (
         <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-mute" aria-label="달력 표시 설명">
           <span className="inline-flex items-center gap-1"><span aria-hidden className="inline-block h-3 w-3 rounded-sm bg-brand" />선택한 배우가 나오는 회차</span>
-          {!only && <span className="inline-flex items-center gap-1"><span aria-hidden className="inline-block h-3 w-3 rounded-sm bg-slot opacity-40" />해당 없는 회차(흐리게)</span>}
         </p>
       )}
 
