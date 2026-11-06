@@ -1,13 +1,14 @@
 "use client";
 
 import { useMemo, useRef, useState } from "react";
-import { ChevronLeft, ChevronRight, Star, Trash2, X } from "lucide-react";
+import { Check, ChevronLeft, ChevronRight, Star, Trash2, X } from "lucide-react";
 import type { Show } from "@/types/show";
 import { DOW, addDays, fmtDate, fromKey, toKey } from "@/lib/casting";
 import { showColor } from "@/lib/mySchedule";
 import { readableText } from "@/lib/color";
 import { castNames } from "@/lib/ics";
 import { CurtainTag } from "../ui/Tags";
+import { useWatched } from "@/lib/watched";
 import { useDialogFocus } from "@/lib/useDialogFocus";
 
 type Item = { show: Show; session: Show["sessions"][number] };
@@ -24,6 +25,8 @@ export default function MySchedCalendar({ items, now, today, onRemove, onOpenSes
   const [cursor, setCursor] = useState<Date>(() => firstOfMonth(fromKey(today)));
   const [selDate, setSelDate] = useState<string | null>(today);
   const [detail, setDetail] = useState<string | null>(null); // session id
+  const watched = useWatched();
+  const isWatched = (i: Item) => watched.has({ show: i.show.title, date: i.session.date, time: i.session.time });
 
   const byDate = useMemo(() => {
     const m = new Map<string, Item[]>();
@@ -109,7 +112,7 @@ export default function MySchedCalendar({ items, now, today, onRemove, onOpenSes
                   <li key={i.session.id}>
                     <button onClick={() => { setDetail(i.session.id); }} aria-label={`${label(i)} 상세 보기`}
                       className={`block w-full rounded-xl border border-l-4 border-line bg-bg p-3 text-left hover:border-brand ${isPast(i) ? "opacity-70" : ""}`} style={{ background: showColor(i.show), color: readableText(showColor(i.show)) }}>
-                      <span className="flex flex-wrap items-center gap-1.5"><span className="font-bold tabular-nums">{i.session.time}</span>{i.session.curtain && <CurtainTag />}{isPast(i) && <span className="text-xs text-mute">지난 일정</span>}</span>
+                      <span className="flex flex-wrap items-center gap-1.5"><span className="font-bold tabular-nums">{i.session.time}</span>{i.session.curtain && <CurtainTag />}{isWatched(i) ? <span className="inline-flex items-center gap-0.5 rounded-full bg-brand px-2 py-0.5 text-xs font-bold text-onbrand"><Check size={11} aria-hidden />관극 완료</span> : isPast(i) && <span className="text-xs text-mute">지난 일정</span>}</span>
                       <span className="mt-0.5 block font-medium">{i.show.title}</span>
                       <span className="mt-0.5 block truncate text-xs text-mute">{cast.length ? cast.join(" · ") : "출연진 미정"}</span>
                     </button>
@@ -121,13 +124,13 @@ export default function MySchedCalendar({ items, now, today, onRemove, onOpenSes
         </section>
       )}
 
-      {detailItem && <DetailDialog item={detailItem} past={isPast(detailItem)} onClose={closeDetail} onRemove={onRemove} onOpenSession={onOpenSession} />}
+      {detailItem && <DetailDialog item={detailItem} past={isPast(detailItem)} watched={isWatched(detailItem)} onToggleWatched={() => { const r = { show: detailItem.show.title, date: detailItem.session.date, time: detailItem.session.time }; if (isWatched(detailItem)) watched.unmark(r); else watched.mark({ ...r, showId: detailItem.show.id, actors: castNames(detailItem.show, detailItem.session) }); }} onClose={closeDetail} onRemove={onRemove} onOpenSession={onOpenSession} />}
     </div>
   );
 }
 
-function DetailDialog({ item, past, onClose, onRemove, onOpenSession }: {
-  item: Item; past: boolean; onClose: () => void; onRemove: (id: string) => void; onOpenSession: (i: Item) => void;
+function DetailDialog({ item, past, watched, onToggleWatched, onClose, onRemove, onOpenSession }: {
+  item: Item; past: boolean; watched: boolean; onToggleWatched: () => void; onClose: () => void; onRemove: (id: string) => void; onOpenSession: (i: Item) => void;
 }) {
   const [confirm, setConfirm] = useState(false);
   const dialogRef = useRef<HTMLDivElement>(null);
@@ -154,6 +157,13 @@ function DetailDialog({ item, past, onClose, onRemove, onOpenSession }: {
           {show.venue && <div className="flex gap-2"><dt className="w-12 shrink-0 text-mute">장소</dt><dd>{show.venue}</dd></div>}
           <div className="flex gap-2"><dt className="w-12 shrink-0 text-mute">캐스트</dt><dd>{cast.join(" · ") || "출연진 미정"}</dd></div>
         </dl>
+        <div className="mt-4 rounded-xl border border-line bg-bg p-3">
+          <button onClick={onToggleWatched} disabled={!past && !watched} aria-pressed={watched}
+            className={`inline-flex min-h-[44px] items-center gap-1.5 rounded-lg border px-3 text-sm font-bold disabled:opacity-50 ${watched ? "border-brand bg-brand text-onbrand" : "border-brand text-brand"}`}>
+            <Check size={15} aria-hidden />{watched ? "관극 완료 (누르면 취소)" : "관극 완료로 표시"}
+          </button>
+          <p className="mt-1.5 text-xs text-mute">{watched ? "관극 통계에 반영돼요." : past ? "직접 표시한 회차만 관극 통계에 들어가요." : "공연이 시작된 뒤에 표시할 수 있어요."}</p>
+        </div>
         <div className="mt-4 flex flex-wrap items-center gap-2">
           <button onClick={() => { onClose(); onOpenSession(item); }} className="min-h-[44px] rounded-lg border border-line px-3 text-sm font-medium hover:border-brand">회차 전체 보기</button>
           {!confirm && <button onClick={() => setConfirm(true)} aria-label={`${lbl} 내 일정에서 삭제`} className="ml-auto inline-flex min-h-[44px] items-center gap-1 rounded-lg border border-line px-3 text-sm text-mute hover:text-brand"><Trash2 size={15} aria-hidden />삭제</button>}

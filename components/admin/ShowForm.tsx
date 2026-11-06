@@ -42,7 +42,7 @@ function ScheduleColor({ show, upd }: { show: Show; upd: (patch: { color: string
       <div className="mt-2 flex flex-wrap items-center gap-2">
         {SHOW_COLORS.map((c) => (
           <button key={c.hex} onClick={() => commit(c.hex)} aria-label={`스케줄 색 ${c.name}`} aria-pressed={saved.toLowerCase() === c.hex} title={c.name}
-            className={`h-8 w-8 rounded-full border-2 ${saved.toLowerCase() === c.hex ? "border-ink ring-2 ring-[var(--brand)]" : "border-line"}`} style={{ background: c.hex }} />
+            className={`h-9 w-9 rounded-full sm:h-8 sm:w-8 border-2 ${saved.toLowerCase() === c.hex ? "border-ink ring-2 ring-[var(--brand)]" : "border-line"}`} style={{ background: c.hex }} />
         ))}
       </div>
       <div className="mt-2 flex flex-wrap items-center gap-2">
@@ -96,13 +96,13 @@ export default function ShowForm({ show, run }: { show: Show; run: Run }) {
             <TextInput value={show.img} onCommit={(v) => upd({ img: v.trim() })} placeholder="https://..." className={inp} />
           </Fld>
           <div className="flex flex-wrap items-center gap-2">
-            <input type="file" accept="image/*" onChange={onFile} aria-label="포스터 파일 올리기" className="min-w-0 max-w-full text-xs" />
+            <input type="file" accept="image/*" onChange={onFile} aria-label="포스터 파일 올리기" className="min-h-[40px] min-w-0 max-w-full text-xs file:mr-2 file:min-h-[36px] file:rounded-lg file:border file:border-line file:bg-card file:px-3" />
             {show.img && <button onClick={() => upd({ img: "" })} className="text-xs text-mute underline">이미지 제거</button>}
           </div>
           <div className="flex gap-2" role="group" aria-label="포스터 색상">
             {PALETTES.map((g) => (
               <button key={g} aria-label="포스터 색상 선택" aria-pressed={show.grad === g} onClick={() => upd({ grad: g })}
-                className={`h-7 w-7 rounded-full border-2 ${show.grad === g ? "border-brand" : "border-line"}`} style={{ background: `linear-gradient(160deg,${g})` }} />
+                className={`h-9 w-9 rounded-full sm:h-7 sm:w-7 border-2 ${show.grad === g ? "border-brand" : "border-line"}`} style={{ background: `linear-gradient(160deg,${g})` }} />
             ))}
           </div>
         </div>

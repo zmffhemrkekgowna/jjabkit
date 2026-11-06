@@ -54,7 +54,7 @@ export default function NoticeBell({ notices }: { notices: Notice[] }) {
   return (
     <>
       <button onClick={show} aria-label={unread > 0 ? `업데이트·소식, 새 소식 ${unread}개` : "업데이트·소식"} aria-haspopup="dialog"
-        className="relative flex h-8 w-8 items-center justify-center rounded-lg border border-line text-mute hover:text-brand">
+        className="relative flex h-9 w-9 items-center justify-center rounded-lg border border-line text-mute hover:text-brand">
         <Bell size={16} aria-hidden />
         {unread > 0 && (
           <span aria-hidden className="absolute -right-1.5 -top-1.5 rounded-full bg-brand px-1 text-[10px] font-bold leading-4 text-onbrand">N</span>

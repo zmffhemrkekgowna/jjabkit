@@ -57,7 +57,7 @@ export default function AdminPanel({ shows, notices, events, popups, pages, cust
       {tab === "popups" && <PopupsAdmin popups={popups} />}
       {tab === "notices" && <NoticesAdmin notices={notices} shows={shows} draft={draft} />}
       {tab === "pages" && <PagesAdmin pages={pages} customPages={customPages} />}
-      {tab === "backup" && <BackupPanel shows={shows} />}
+      {tab === "backup" && <BackupPanel shows={shows} events={events} />}
       <ToastHost />
     </div>
   );

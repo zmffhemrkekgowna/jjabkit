@@ -3,6 +3,7 @@
 import { useRef, useState } from "react";
 import { AlertTriangle, Download, Upload } from "lucide-react";
 import type { Show } from "@/types/show";
+import type { EventItem } from "@/types/event";
 import { BACKUP_VERSION, MAX_FILE_BYTES, backupFileName, buildBackup, countSessions, parseBackup, type BackupShow } from "@/lib/backup";
 import { downloadBlob } from "@/lib/download";
 import { Sec, btn, ghost, useAdminRun } from "./shared";
@@ -10,8 +11,8 @@ import { Sec, btn, ghost, useAdminRun } from "./shared";
 type Mode = "add" | "skip" | "replace";
 
 /** 전체 공연·배역·배우·회차·캐스팅을 JSON 파일로 내려받고, 같은 형식의 파일로 한 번에 복구해요. */
-export default function BackupPanel({ shows }: { shows: Show[] }) {
-  const { run, msg, setMsg } = useAdminRun();
+export default function BackupPanel({ shows, events = [] }: { shows: Show[]; events?: EventItem[] }) {
+  const { db, run, msg, setMsg } = useAdminRun();
   const file = useRef<HTMLInputElement>(null);
   const [parsed, setParsed] = useState<{ name: string; shows: BackupShow[]; exportedAt: string } | null>(null);
   const [errors, setErrors] = useState<string[]>([]);
@@ -42,13 +43,37 @@ export default function BackupPanel({ shows }: { shows: Show[] }) {
   const doImport = async () => {
     if (!parsed) return;
     setBusy(true);
-    const ok = await run(async (db) => {
-      const { error } = await db.rpc("import_shows", { p_data: { shows: toImport }, p_replace: mode === "replace" });
+    // 전체 교체는 공연을 모두 지우고 새로 만들어요. 그러면 공연 id가 바뀌고, 공연에 붙어 있던 이벤트의 연결(show_id)이 끊겨요.
+    // 그래서 지우기 전에 '이벤트 → 공연 제목'을 기억해 두었다가, 복원 뒤 같은 제목의 새 공연에 다시 이어 붙여요.
+    const titleOf = new Map(shows.map((s) => [s.id, s.title]));
+    const evLinks = mode === "replace" ? events.filter((e) => e.showId && titleOf.has(e.showId)).map((e) => ({ id: e.id, title: titleOf.get(e.showId)! })) : [];
+    if (mode === "replace") { // 되돌릴 수 있게, 지우기 전에 지금 상태를 파일로 자동 저장해요(실패해도 진행은 막지 않아요).
+      try { downloadBlob(new Blob([JSON.stringify(buildBackup(shows), null, 2)], { type: "application/json" }), backupFileName().replace("jjabkit-backup-", "jjabkit-before-restore-")); } catch { /* 저장 실패는 무시 */ }
+    }
+    let relinkNote = "";
+    const ok = await run(async (d) => {
+      const { error } = await d.rpc("import_shows", { p_data: { shows: toImport }, p_replace: mode === "replace" });
       if (error) throw new Error(error.message);
+      if (evLinks.length > 0) { // 여기부터는 이미 복원이 끝난 뒤예요. 실패해도 복원은 그대로 두고 안내만 해요.
+        try {
+          const { data, error: e2 } = await d.from("shows").select("id, title");
+          if (e2) throw new Error(e2.message);
+          const byTitle = new Map<string, string>();
+          for (const r of (data ?? []) as { id: string; title: string }[]) if (!byTitle.has(r.title)) byTitle.set(r.title, r.id);
+          let linked = 0, lost = 0;
+          for (const l of evLinks) {
+            const to = byTitle.get(l.title);
+            if (!to) { lost++; continue; }
+            const { error: e3 } = await d.from("events").update({ show_id: to }).eq("id", l.id);
+            if (e3) lost++; else linked++;
+          }
+          relinkNote = ` 이벤트 ${linked}개를 새 공연에 다시 연결했어요.${lost ? ` (${lost}개는 같은 제목의 공연이 없어 연결하지 못했어요)` : ""}`;
+        } catch { relinkNote = " 이벤트를 다시 연결하지 못했어요. 이벤트가 안 보이면 공연 관리에서 다시 등록해 주세요."; }
+      }
     }, `공연 ${toImport.length}개를 불러왔어요.${skipped ? ` (이미 있는 ${skipped}개는 건너뛰었어요)` : ""}`);
     // 실패하면 DB는 그대로예요(한 번에 전부 성공하거나 전부 취소돼요). 파일 선택은 남겨 두어 다시 시도할 수 있어요.
     setBusy(false);
-    if (ok) { if (file.current) file.current.value = ""; setParsed(null); setConfirm(false); }
+    if (ok) { if (relinkNote) setMsg((m) => m + relinkNote); if (file.current) file.current.value = ""; setParsed(null); setConfirm(false); }
   };
 
   const radio = (v: Mode, label: string, hint: string) => (
@@ -100,7 +125,7 @@ export default function BackupPanel({ shows }: { shows: Show[] }) {
             {mode === "replace" && (
               <label className="flex items-start gap-2 rounded-xl border border-brand bg-hit p-3 text-sm">
                 <input type="checkbox" checked={confirm} onChange={(e) => setConfirm(e.target.checked)} className="mt-0.5 h-4 w-4" />
-                <span>지금 등록된 공연 {shows.length}개와 그 회차가 모두 삭제되는 것을 확인했어요. 먼저 위에서 백업을 내려받았어요.</span>
+                <span>지금 등록된 공연 {shows.length}개와 그 회차가 모두 삭제되는 것을 확인했어요. (불러오기를 누르면 지금 상태가 ‘복원전’ 파일로 먼저 자동 저장되고, 이벤트는 같은 제목의 새 공연에 다시 연결돼요.)</span>
               </label>
             )}
             {mode === "skip" && skipped > 0 && <p className="text-xs text-mute">제목이 겹치는 {skipped}개는 건너뛰고 {toImport.length}개를 추가해요.</p>}

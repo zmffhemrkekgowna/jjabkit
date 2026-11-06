@@ -7,7 +7,7 @@ import type { EventItem } from "@/types/event";
 import { createEvent, deleteEvent, deleteEventsOfShow, restoreEvents, updateEvent, type EventInput } from "@/lib/db/events";
 import { useDirty } from "./dirty";
 import { EVENT_COLORS, isHex6, readableOn } from "@/lib/color";
-import { PHASE_LABEL, isHttpUrl, periodText, phaseOf } from "@/lib/period";
+import { PHASE_LABEL, isHttpUrl, isRealDate, linkProblem, periodText, phaseOf } from "@/lib/period";
 import { Fld, Sec, btn, ghost, iconBtn, inp, showToast, type Run } from "./shared";
 
 const EMPTY: EventInput = { title: "", startsOn: "", endsOn: "", linkUrl: "", color: "" };
@@ -26,16 +26,21 @@ export default function ShowEventsEditor({ show, events, run }: { show: Show; ev
   const [err, setErr] = useState("");
 
   const set = <K extends keyof EventInput>(k: K, v: EventInput[K]) => { setErr(""); setForm((f) => ({ ...f, [k]: v })); };
-  const reset = () => { setEditing(null); setForm(EMPTY); setErr(""); };
+  const reset = () => { setEditing(null); setForm(EMPTY); setErr(""); setTouched(false); };
   useDirty(`event-form-${show.id}`, "이벤트 입력", editing === null && JSON.stringify(form) !== JSON.stringify(EMPTY));
   const t = form.title.trim();
-  const problem =
-    !t || t.length > 100 ? "제목을 1~100자로 입력해 주세요."
-    : !form.startsOn ? "시작하는 날을 골라 주세요."
-    : form.endsOn && form.endsOn < form.startsOn ? "끝나는 날이 시작하는 날보다 빠를 수 없어요."
-    : form.linkUrl.trim() && !isHttpUrl(form.linkUrl.trim()) ? "공지 링크는 http:// 또는 https:// 로 시작해야 해요."
-    : form.color && !isHex6(form.color) ? "막대 색은 #rrggbb 형식이어야 해요."
-    : "";
+  // 칸마다 따로 검사해서 어느 칸이 문제인지 그 칸 아래에 바로 보여줘요.
+  const fieldErr = {
+    title: !t ? "제목을 입력해 주세요." : t.length > 100 ? "제목은 100자 이내로 입력해 주세요." : "",
+    startsOn: !form.startsOn ? "시작하는 날을 골라 주세요." : !isRealDate(form.startsOn) ? "존재하지 않는 날짜예요." : "",
+    endsOn: form.endsOn && !isRealDate(form.endsOn) ? "존재하지 않는 날짜예요."
+      : form.endsOn && form.startsOn && form.endsOn < form.startsOn ? "끝나는 날이 시작하는 날보다 빠를 수 없어요." : "",
+    linkUrl: linkProblem(form.linkUrl),
+    color: form.color && !isHex6(form.color) ? "막대 색은 #rrggbb 형식이어야 해요." : "",
+  };
+  const [touched, setTouched] = useState(false); // 저장을 한 번 눌러 본 뒤부터 빈 칸 안내를 보여줘요
+  const shown = (k: keyof typeof fieldErr) => (touched || (k !== "title" && k !== "startsOn" && form[k])) ? fieldErr[k] : "";
+  const problem = fieldErr.title || fieldErr.startsOn || fieldErr.endsOn || fieldErr.linkUrl || fieldErr.color;
 
   const toggle = (v: boolean) => {
     if (v) { setOn(true); setOffAsk(false); return; }
@@ -47,7 +52,7 @@ export default function ShowEventsEditor({ show, events, run }: { show: Show; ev
     if (ok) { setOn(false); setOffAsk(false); reset(); }
   };
   const save = async () => {
-    if (problem) { setErr(problem); showToast(problem, "error"); return; }
+    if (problem) { setTouched(true); setErr(problem); showToast(problem, "error"); return; }
     const ok = await run(
       (db) => (editing ? updateEvent(db, editing, form, !!events.find((x) => x.id === editing)?.color) : createEvent(db, show.id, form)),
       editing ? "이벤트가 수정되었습니다." : "이벤트가 추가되었습니다.",
@@ -115,21 +120,25 @@ export default function ShowEventsEditor({ show, events, run }: { show: Show; ev
             </div>
             <div className="grid gap-3 sm:grid-cols-2">
               <Fld label={`제목 (${t.length}/100)`} className="sm:col-span-2">
-                <input value={form.title} maxLength={100} onChange={(e) => set("title", e.target.value)} className={inp} placeholder="예: 커튼콜 데이 포토카드 증정" />
+                <input value={form.title} maxLength={100} onChange={(e) => set("title", e.target.value)} className={inp} placeholder="예: 커튼콜 데이 포토카드 증정" aria-invalid={!!shown("title")} />
+                {shown("title") && <p role="alert" className="mt-1 text-xs text-red-600">{shown("title")}</p>}
               </Fld>
-              <Fld label="시작하는 날"><input type="date" value={form.startsOn} onChange={(e) => set("startsOn", e.target.value)} className={inp} /></Fld>
-              <Fld label="끝나는 날 (비우면 하루만)"><input type="date" value={form.endsOn} onChange={(e) => set("endsOn", e.target.value)} className={inp} /></Fld>
+              <Fld label="시작하는 날"><input type="date" value={form.startsOn} onChange={(e) => set("startsOn", e.target.value)} className={inp} aria-invalid={!!shown("startsOn")} />
+                {shown("startsOn") && <p role="alert" className="mt-1 text-xs text-red-600">{shown("startsOn")}</p>}</Fld>
+              <Fld label="끝나는 날 (비우면 하루만)"><input type="date" value={form.endsOn} min={isRealDate(form.startsOn) ? form.startsOn : undefined} onChange={(e) => set("endsOn", e.target.value)} className={inp} aria-invalid={!!shown("endsOn")} />
+                {shown("endsOn") && <p role="alert" className="mt-1 text-xs text-red-600">{shown("endsOn")}</p>}</Fld>
               <Fld label="공지 링크 (선택)" className="sm:col-span-2">
-                <input value={form.linkUrl} maxLength={500} onChange={(e) => set("linkUrl", e.target.value)} className={inp} placeholder="https://..." inputMode="url" />
+                <input value={form.linkUrl} maxLength={500} onChange={(e) => set("linkUrl", e.target.value)} className={inp} placeholder="https://..." inputMode="url" aria-invalid={!!shown("linkUrl")} />
+                {shown("linkUrl") && <p role="alert" className="mt-1 text-xs text-red-600">{shown("linkUrl")}</p>}
               </Fld>
               <div className="sm:col-span-2">
                 <p className="text-xs font-medium text-mute">달력 막대 색 (선택)</p>
                 <div className="mt-1.5 flex flex-wrap items-center gap-2">
                   <button type="button" onClick={() => set("color", "")} aria-pressed={!form.color} aria-label="기본색"
-                    className={`rounded-full border px-3 py-1 text-xs ${!form.color ? "border-brand bg-hit font-bold text-brand" : "border-line text-mute"}`}>기본</button>
+                    className={`rounded-full border px-3 py-2 text-xs sm:py-1 ${!form.color ? "border-brand bg-hit font-bold text-brand" : "border-line text-mute"}`}>기본</button>
                   {EVENT_COLORS.map((c) => (
                     <button key={c.hex} type="button" onClick={() => set("color", c.hex)} aria-label={`막대 색 ${c.name}`} aria-pressed={form.color.toLowerCase() === c.hex}
-                      style={{ background: c.hex }} className={`h-7 w-7 rounded-full border-2 ${form.color.toLowerCase() === c.hex ? "border-ink ring-2 ring-[var(--brand)]" : "border-line"}`} />
+                      style={{ background: c.hex }} className={`h-9 w-9 sm:h-7 sm:w-7 rounded-full border-2 ${form.color.toLowerCase() === c.hex ? "border-ink ring-2 ring-[var(--brand)]" : "border-line"}`} />
                   ))}
                   <label className="inline-flex items-center gap-1 text-xs text-mute">직접 고르기
                     <input type="color" aria-label="막대 색 직접 고르기" value={isHex6(form.color) ? form.color : "#2563eb"} onChange={(e) => set("color", e.target.value)} className="h-7 w-9 cursor-pointer rounded border border-line bg-card p-0.5" />
@@ -142,8 +151,8 @@ export default function ShowEventsEditor({ show, events, run }: { show: Show; ev
               </div>
             </div>
             <div className="mt-3 flex flex-wrap items-center gap-3">
-              <button onClick={save} className={btn} disabled={!!problem}><Plus size={14} aria-hidden />{editing ? "수정 저장" : "이벤트 추가"}</button>
-              {(err || (problem && form.title)) && <p className="text-xs text-mute">{err || problem}</p>}
+              <button onClick={save} className={btn}><Plus size={14} aria-hidden />{editing ? "수정 저장" : "이벤트 추가"}</button>
+              {touched && problem && <p role="alert" className="text-xs text-red-600">{problem}</p>}
             </div>
           </div>
         </div>

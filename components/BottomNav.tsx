@@ -4,9 +4,9 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { CalendarClock, DatabaseBackup, House, UserRound } from "lucide-react";
 
-export type MyTab = "show" | "actor" | "fsched" | "sched";
+export type MyTab = "show" | "actor" | "fsched" | "sched" | "stats";
 /** 마이페이지 탭: 관심 공연 / 관심 배우 / 관심 배우 일정(fsched) / 내 일정(sched, 기본) */
-export const myTabOf = (v: string | null | undefined): MyTab => (v === "show" || v === "actor" || v === "fsched" ? v : "sched");
+export const myTabOf = (v: string | null | undefined): MyTab => (v === "show" || v === "actor" || v === "fsched" || v === "stats" ? v : "sched");
 
 const ITEMS = [
   { id: "home", label: "홈", href: "/", Icon: House },

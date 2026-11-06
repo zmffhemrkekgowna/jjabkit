@@ -26,6 +26,8 @@ export default function CastFilter({ idx, sel, toggle, selectMany, reset, only, 
   const selected = useMemo(() => [...sel].map((id) => actorOf(idx, id)).filter((a) => a.id), [sel, idx]);
   const k = q.trim().toLowerCase().replace(/\s+/g, "");
   const searching = k !== "";
+  const dirty = sel.size > 0 || only || k !== "" || onlySel;
+  const resetAll = () => { reset(); setQ(""); setOnlySel(false); };
   const toggleRole = (id: string) => setClosedRoles((p) => { const n = new Set(p); if (n.has(id)) n.delete(id); else n.add(id); return n; });
 
   // 검색 중이거나 '선택만 보기'일 때는 해당하는 배우만 남기고, 남는 배우가 없는 배역은 숨겨요.
@@ -47,7 +49,7 @@ export default function CastFilter({ idx, sel, toggle, selectMany, reset, only, 
               {sel.size > 0 ? `${sel.size}명 선택` : "선택 없음"}
             </span>
           </button>
-          <button onClick={reset} disabled={sel.size === 0} className="flex min-h-[44px] items-center gap-1 rounded-lg border border-line px-3 text-sm disabled:opacity-40">
+          <button onClick={resetAll} disabled={!dirty} className="flex min-h-[44px] items-center gap-1 rounded-lg border border-line px-3 text-sm disabled:opacity-40">
             <RotateCcw size={14} aria-hidden />초기화
           </button>
         </div>

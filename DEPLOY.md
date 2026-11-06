@@ -5,7 +5,7 @@
 ## 1. Supabase 준비
 
 1. 새 프로젝트를 만들어요. DB 비밀번호는 따로 보관해 주세요.
-2. SQL Editor에서 `supabase/migrations/0001_init.sql` 전체를 붙여넣고 실행해요. (테이블, 보안 규칙, 권한 정리, 포스터 저장소가 한 번에 만들어져요.) 이어서 `supabase/migrations/0003_notices_backup.sql`, `supabase/migrations/0004_events_popups.sql`, `supabase/migrations/0005_site_pages.sql`, `supabase/migrations/0006_event_color.sql`, `supabase/migrations/0007_site_pages_custom.sql`, `supabase/migrations/0008_atomic_admin_ops.sql`도 차례로 실행해요. (0008은 회차 일괄 수정·삭제, 공연 삭제·되돌리기를 한 번에 처리하는 함수라, 빼먹으면 관리자의 해당 기능만 오류 안내가 떠요.) (소식 표와 백업 불러오기 함수. 여러 번 실행해도 안전해요. 0002는 예전 0001만 실행한 프로젝트용 패치라 새 프로젝트에는 필요 없어요)
+2. SQL Editor에서 `supabase/migrations/0001_init.sql` 전체를 붙여넣고 실행해요. (테이블, 보안 규칙, 권한 정리, 포스터 저장소가 한 번에 만들어져요.) 이어서 `supabase/migrations/0003_notices_backup.sql`, `supabase/migrations/0004_events_popups.sql`, `supabase/migrations/0005_site_pages.sql`, `supabase/migrations/0006_event_color.sql`, `supabase/migrations/0007_site_pages_custom.sql`, `supabase/migrations/0008_atomic_admin_ops.sql`와 `supabase/migrations/0009_show_color.sql`도 차례로 실행해요. (0009는 공연별 스케줄 색을 저장하는 칸을 추가해요. 빼먹어도 다른 기능은 그대로 되고, 색을 저장할 때만 안내가 떠요.) (0008은 회차 일괄 수정·삭제, 공연 삭제·되돌리기를 한 번에 처리하는 함수라, 빼먹으면 관리자의 해당 기능만 오류 안내가 떠요.) (소식 표와 백업 불러오기 함수. 여러 번 실행해도 안전해요. 0002는 예전 0001만 실행한 프로젝트용 패치라 새 프로젝트에는 필요 없어요)
 3. 샘플 공연을 보고 싶으면 `supabase/seed.sql`도 실행해요. 지킬 앤 하이드, 시카고, 헤드윅, 햄릿, 리어왕 5개(회차 180개)가 들어가고, 다시 실행해도 중복되지 않아요. 지울 때는 관리자 화면에서 공연을 삭제하면 돼요.
 4. Authentication > Users에서 내 이메일과 비밀번호로 사용자를 추가해요.
 5. SQL Editor에서 관리자로 등록해요. (이메일은 내 것으로)
@@ -53,6 +53,7 @@
 | 로그인했는데 `/admin`이 홈으로 돌아감 | 5번의 관리자 등록 SQL을 실행했는지, 로그인한 이메일과 같은지 |
 | 저장할 때 "권한이 없어요" | 관리자 계정으로 로그인했는지 |
 | 소식·백업에서 "0003 … 적용되지 않았어요" | `0003_notices_backup.sql`을 SQL Editor에서 실행 |
+| 스케줄 색 저장 시 "0009 … 적용되지 않았어요" | `0009_show_color.sql`을 SQL Editor에서 실행 (여러 번 실행해도 안전해요) |
 | 이벤트·팝업에서 "0004 … 적용되지 않았어요" | `0004_events_popups.sql`을 SQL Editor에서 실행 |
 | 안내 페이지 저장 시 "0005 … 적용되지 않았어요" | `0005_site_pages.sql`을 SQL Editor에서 실행 (실행 전에도 /about·/privacy·/contact는 기본 문구로 보여요) |
 | 홈에 팝업이 안 떠요 | 팝업 광고 탭에서 '켜 두기'가 켜져 있고 오늘이 기간 안인지, 팝업을 올린 적이 있는지 확인해요. 올리기 전에는 팝업이 없어요. '오늘 하루 동안 보지 않기'를 눌렀다면 그 브라우저에서는 24시간 숨겨져요 |

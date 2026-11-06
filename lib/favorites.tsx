@@ -1,5 +1,6 @@
 "use client";
 
+import { FAV_META_KEY, readMeta, relinkShowIds, writeMeta } from "./relink";
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 
 /** 관심 공연은 공연 id, 관심 배우는 이름으로 저장해요. (같은 배우가 여러 공연에 나와도 한 번에 모아볼 수 있어요) */
@@ -11,6 +12,8 @@ interface Favorites extends Stored {
   toggleActor: (name: string) => void;
   /** 더 이상 없는 공연의 하트를 지워요 */
   pruneShows: (valid: Set<string>) => void;
+  /** 공연 id가 바뀌었어도 제목으로 이어 붙여요(하트를 지우지 않아요) */
+  reconcile: (shows: { id: string; title: string }[]) => void;
   /** 백업 파일에서 불러올 때: 관심 공연·배우를 통째로 바꿔요 */
   replaceAll: (shows: Set<string>, actors: Set<string>) => void;
 }
@@ -60,11 +63,20 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
+  const reconcile = useCallback((shows: { id: string; title: string }[]) => {
+    if (shows.length === 0) return;
+    setState((prev) => {
+      const r = relinkShowIds(prev.shows, readMeta(FAV_META_KEY), shows);
+      writeMeta(FAV_META_KEY, r.meta);
+      return r.changed ? { ...prev, shows: r.ids } : prev;
+    });
+  }, []);
+
   const replaceAll = useCallback((shows: Set<string>, actors: Set<string>) => setState({ shows: new Set(shows), actors: new Set(actors) }), []);
 
   const value = useMemo<Favorites>(
-    () => ({ ...state, ready, toggleShow: (id) => flip("shows", id), toggleActor: (n) => flip("actors", n), pruneShows, replaceAll }),
-    [state, ready, flip, pruneShows, replaceAll]
+    () => ({ ...state, ready, toggleShow: (id) => flip("shows", id), toggleActor: (n) => flip("actors", n), pruneShows, reconcile, replaceAll }),
+    [state, ready, flip, pruneShows, reconcile, replaceAll]
   );
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

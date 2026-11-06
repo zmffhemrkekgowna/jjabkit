@@ -1,5 +1,6 @@
 "use client";
 
+import { SESS_META_KEY, readMeta, relinkSessionIds, writeMeta, type ShowRefLite } from "./relink";
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 
 /**
@@ -18,6 +19,8 @@ interface MySched {
   toggle: (sessionId: string) => void;
   /** 삭제된 회차의 id를 정리해요 */
   prune: (valid: Set<string>) => void;
+  /** 공연 데이터를 다시 만들어 id가 바뀌었어도 제목·날짜·시간으로 이어 붙여요(지워지지 않게 보관) */
+  reconcile: (shows: ShowRefLite[]) => void;
   /** 백업 불러오기용: 전체를 한 번에 바꿔요 */
   replaceAll: (ids: Set<string>) => void;
 }
@@ -59,9 +62,15 @@ export function MySchedProvider({ children }: { children: ReactNode }) {
     return keep.length === p.size ? p : new Set(keep);
   }), []);
 
+  const reconcile = useCallback((shows: ShowRefLite[]) => setIds((p) => {
+    if (shows.length === 0) return p; // DB 점검·복구 중일 수 있어요. 아무것도 바꾸지 않아요.
+    const r = relinkSessionIds(p, readMeta(SESS_META_KEY), shows);
+    writeMeta(SESS_META_KEY, r.meta);
+    return r.changed ? r.ids : p;
+  }), []);
   const replaceAll = useCallback((next: Set<string>) => setIds(new Set(next)), []);
 
-  const value = useMemo<MySched>(() => ({ ready, ids, has: (id) => ids.has(id), add, remove, toggle, prune, replaceAll }), [ready, ids, add, remove, toggle, prune, replaceAll]);
+  const value = useMemo<MySched>(() => ({ ready, ids, has: (id) => ids.has(id), add, remove, toggle, prune, reconcile, replaceAll }), [ready, ids, add, remove, toggle, prune, reconcile, replaceAll]);
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
 

@@ -1,3 +1,4 @@
+import { cleanRecords, type WatchedRecord } from "./watched";
 /**
  * '내 하트' 백업(JSON). 하트는 이 브라우저(localStorage)에만 있어서, 브라우저를 바꾸거나 사이트 데이터를 지우면 사라져요.
  * 공연은 id와 제목을 함께 담아, 공연 데이터를 다시 만들어 id가 바뀌었어도 제목으로 찾아 맞춰요.
@@ -9,11 +10,11 @@ const MAX_ITEMS = 500;
 const MAX_SESSIONS = 2000;
 
 export interface MyBackupSession { id: string; show: string; date: string; time: string }
-export interface FavBackupFile { app: "jjabkit"; kind: typeof FAV_KIND; version: number; exportedAt: string; shows: { id: string; title: string }[]; actors: string[]; /** 내 일정(없으면 예전 파일) */ mySessions?: MyBackupSession[] }
+export interface FavBackupFile { app: "jjabkit"; kind: typeof FAV_KIND; version: number; exportedAt: string; shows: { id: string; title: string }[]; actors: string[]; /** 내 일정(없으면 예전 파일) */ mySessions?: MyBackupSession[]; /** 관극 완료 기록(없으면 예전 파일) */ watched?: WatchedRecord[] }
 interface SessionRef { id: string; date: string; time: string }
 interface ShowRef { id: string; title: string; sessions?: SessionRef[] }
 
-export function buildFavBackup(shows: ShowRef[], favShows: Set<string>, favActors: Set<string>, now = new Date(), mine: Set<string> = new Set()): FavBackupFile {
+export function buildFavBackup(shows: ShowRef[], favShows: Set<string>, favActors: Set<string>, now = new Date(), mine: Set<string> = new Set(), watched: WatchedRecord[] = []): FavBackupFile {
   // 내 일정은 회차 id와 함께 공연 제목·날짜·시간을 담아요. 데이터를 다시 만들어 id가 바뀌어도 이 셋으로 찾아 맞춰요.
   const mySessions: MyBackupSession[] = shows.flatMap((s) => (s.sessions ?? []).filter((x) => mine.has(x.id)).map((x) => ({ id: x.id, show: s.title, date: x.date, time: x.time })))
     .sort((a, b) => (a.date + a.time + a.show).localeCompare(b.date + b.time + b.show));
@@ -22,6 +23,7 @@ export function buildFavBackup(shows: ShowRef[], favShows: Set<string>, favActor
     shows: shows.filter((s) => favShows.has(s.id)).map((s) => ({ id: s.id, title: s.title })),
     actors: [...favActors],
     mySessions,
+    watched,
   };
 }
 export const favBackupFileName = (now = new Date()) => {
@@ -30,7 +32,7 @@ export const favBackupFileName = (now = new Date()) => {
 };
 
 export type FavParse =
-  | { ok: true; showIds: string[]; unmatched: string[]; actors: string[]; exportedAt: string; /** null이면 내 일정이 없는 예전 파일 */ sessionIds: string[] | null; unmatchedSessions: number }
+  | { ok: true; showIds: string[]; unmatched: string[]; actors: string[]; exportedAt: string; /** null이면 내 일정이 없는 예전 파일 */ sessionIds: string[] | null; unmatchedSessions: number; /** null이면 관극 기록이 없는 예전 파일 */ watched: WatchedRecord[] | null }
   | { ok: false; error: string };
 
 const isObj = (v: unknown): v is Record<string, unknown> => typeof v === "object" && v !== null && !Array.isArray(v);
@@ -74,5 +76,11 @@ export function parseFavBackup(text: string, known: ShowRef[]): FavParse {
     }
     sessionIds = [...ids];
   }
-  return { ok: true, showIds: [...showIds], unmatched, actors: [...actors], exportedAt: typeof raw.exportedAt === "string" ? raw.exportedAt : "", sessionIds, unmatchedSessions };
+  let watched: WatchedRecord[] | null = null;
+  if (raw.watched !== undefined) {
+    if (!Array.isArray(raw.watched)) return { ok: false, error: "관극 완료 기록의 형식이 잘못됐어요." };
+    if (raw.watched.length > 5000) return { ok: false, error: "관극 완료 기록이 너무 많아요. (5000개까지)" };
+    watched = cleanRecords(raw.watched);
+  }
+  return { ok: true, showIds: [...showIds], unmatched, actors: [...actors], exportedAt: typeof raw.exportedAt === "string" ? raw.exportedAt : "", sessionIds, unmatchedSessions, watched };
 }

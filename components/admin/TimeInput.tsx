@@ -36,4 +36,3 @@ export default function TimeInput({ value, onChange, label, className = inp, onB
     </span>
   );
 }
- 

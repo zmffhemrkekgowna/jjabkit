@@ -35,7 +35,7 @@ export default function ShowDetail({ show, events = [], initialOpen = null }: { 
   const openSheet = (date: string, sid?: string) => setOpen({ date, sid });
 
   return (
-    <div className="mx-auto max-w-3xl pb-10">
+    <div className="mx-auto max-w-3xl pb-10 lg:max-w-6xl">
       <div className="px-4 pt-4">
         <Link href="/" className="inline-flex items-center gap-1 rounded-lg py-1 pr-2 text-sm font-medium text-mute hover:text-brand">
           <ArrowLeft size={16} aria-hidden />목록으로 돌아가기
@@ -72,7 +72,7 @@ export default function ShowDetail({ show, events = [], initialOpen = null }: { 
 
       <main className="space-y-3 px-4 pt-4">
         {tab === "cast" ? (
-          <CastingScheduler color={showColor(show)} showTitle={show.title} idx={idx} sel={sel} only={only} setOnly={setOnly} toggle={toggle} selectMany={(ids) => setSel(new Set(ids))} reset={() => setSel(new Set())} onOpen={openSheet} events={events} onOpenEvent={setEvOpen} />
+          <CastingScheduler color={showColor(show)} showTitle={show.title} idx={idx} sel={sel} only={only} setOnly={setOnly} toggle={toggle} selectMany={(ids) => setSel(new Set(ids))} reset={() => { setSel(new Set()); setOnly(false); }} onOpen={openSheet} events={events} onOpenEvent={setEvOpen} />
         ) : (
           <EventsTab show={show} idx={idx} events={events} onOpen={openSheet} onOpenEvent={setEvOpen} />
         )}

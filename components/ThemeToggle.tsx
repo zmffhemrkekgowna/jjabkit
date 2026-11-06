@@ -18,7 +18,7 @@ export default function ThemeToggle() {
   };
 
   return (
-    <button onClick={toggle} aria-label={dark ? "라이트 테마로 전환" : "다크 테마로 전환"} className="rounded-full border border-line p-2">
+    <button onClick={toggle} aria-label={dark ? "라이트 테마로 전환" : "다크 테마로 전환"} className="flex h-9 w-9 items-center justify-center rounded-lg border border-line text-mute hover:text-brand">
       {dark ? <Sun size={16} aria-hidden /> : <Moon size={16} aria-hidden />}
     </button>
   );

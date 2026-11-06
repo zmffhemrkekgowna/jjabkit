@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Download, Upload, Database, AlertTriangle } from "lucide-react";
 import { useFavorites } from "@/lib/favorites";
 import { useMySched } from "@/lib/mySched";
+import { useWatched } from "@/lib/watched";
 import { buildFavBackup, favBackupFileName, parseFavBackup, type FavParse } from "@/lib/favBackup";
 import { downloadBlob } from "@/lib/download";
 
@@ -17,6 +18,7 @@ const ghost = "inline-flex items-center gap-1 rounded-lg border border-line px-3
 export default function FavBackup({ shows, isAdmin }: { shows: { id: string; title: string; sessions?: { id: string; date: string; time: string }[] }[]; isAdmin: boolean }) {
   const fav = useFavorites();
   const mine = useMySched();
+  const watched = useWatched();
   const file = useRef<HTMLInputElement>(null);
   const [parsed, setParsed] = useState<Extract<FavParse, { ok: true }> | null>(null);
   const [error, setError] = useState("");
@@ -24,9 +26,9 @@ export default function FavBackup({ shows, isAdmin }: { shows: { id: string; tit
   const [msg, setMsg] = useState("");
 
   const exportJson = () => {
-    const d = buildFavBackup(shows, fav.shows, fav.actors, new Date(), mine.ids);
+    const d = buildFavBackup(shows, fav.shows, fav.actors, new Date(), mine.ids, watched.records);
     downloadBlob(new Blob([JSON.stringify(d, null, 2)], { type: "application/json" }), favBackupFileName());
-    setMsg(`관심 공연 ${d.shows.length}개, 관심 배우 ${d.actors.length}명, 내 일정 ${d.mySessions?.length ?? 0}개를 내려받았어요.`);
+    setMsg(`관심 공연 ${d.shows.length}개, 관심 배우 ${d.actors.length}명, 내 일정 ${d.mySessions?.length ?? 0}개, 관극 완료 ${d.watched?.length ?? 0}회를 내려받았어요.`);
   };
 
   const pick = async (f: File | undefined) => {
@@ -47,6 +49,10 @@ export default function FavBackup({ shows, isAdmin }: { shows: { id: string; tit
       if (mode === "merge") mine.ids.forEach((x) => next.add(x));
       mine.replaceAll(next); ms = next.size;
     }
+    if (parsed.watched) { // 관극 기록이 들어 있는 파일일 때만 바꿔요. 예전 파일이면 지금 기록은 그대로예요.
+      const base = mode === "merge" ? watched.records : [];
+      watched.replaceAll([...base, ...parsed.watched]);
+    }
     setMsg(`불러왔어요. 관심 공연 ${s.size}개, 관심 배우 ${a.size}명, 내 일정 ${ms}개예요.${parsed.unmatched.length ? ` (지금 없는 공연 ${parsed.unmatched.length}개는 건너뛰었어요)` : ""}${parsed.unmatchedSessions ? ` (지금 없는 회차 ${parsed.unmatchedSessions}개는 건너뛰었어요)` : ""}`);
     setParsed(null);
     if (file.current) file.current.value = "";
@@ -62,7 +68,7 @@ export default function FavBackup({ shows, isAdmin }: { shows: { id: string; tit
 
       <section className={card}>
         <h2 className="font-bold">내 하트·내 일정 백업</h2>
-        <p className="mt-1 text-sm text-mute">관심 공연 {fav.shows.size}개 · 관심 배우 {fav.actors.size}명 · 내 일정 {mine.ids.size}개</p>
+        <p className="mt-1 text-sm text-mute">관심 공연 {fav.shows.size}개 · 관심 배우 {fav.actors.size}명 · 내 일정 {mine.ids.size}개 · 관극 완료 {watched.records.length}회</p>
         <button onClick={exportJson} disabled={!fav.ready} className={`${btn} mt-3`}><Download size={14} aria-hidden />JSON 파일 내려받기</button>
       </section>
 
@@ -75,7 +81,7 @@ export default function FavBackup({ shows, isAdmin }: { shows: { id: string; tit
         {parsed && (
           <div className="mt-3 space-y-3">
             <div className="rounded-xl border border-line bg-bg p-3 text-sm">
-              파일 안: 관심 공연 {parsed.showIds.length}개 · 관심 배우 {parsed.actors.length}명{parsed.sessionIds ? ` · 내 일정 ${parsed.sessionIds.length}개` : " · (내 일정 없는 예전 파일: 지금 내 일정은 그대로 둬요)"}
+              파일 안: 관심 공연 {parsed.showIds.length}개 · 관심 배우 {parsed.actors.length}명{parsed.sessionIds ? ` · 내 일정 ${parsed.sessionIds.length}개` : " · (내 일정 없는 예전 파일: 지금 내 일정은 그대로 둬요)"}{parsed.watched ? ` · 관극 완료 ${parsed.watched.length}회` : ""}
               {parsed.unmatchedSessions > 0 && <p className="mt-1 text-xs text-mute">지금 없는 회차라 건너뛰는 내 일정: {parsed.unmatchedSessions}개</p>}
               {parsed.unmatched.length > 0 && <p className="mt-1 text-xs text-mute">지금 없는 공연이라 건너뛰는 항목: {parsed.unmatched.slice(0, 5).join(", ")}{parsed.unmatched.length > 5 ? ` 외 ${parsed.unmatched.length - 5}개` : ""}</p>}
             </div>

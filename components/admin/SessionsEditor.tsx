@@ -291,8 +291,8 @@ export default function SessionsEditor({ show, events = [], run, notify }: { sho
         <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
           <p className="text-sm font-bold">회차 추가</p>
           <div className="inline-flex rounded-lg border border-line p-0.5" role="group" aria-label="추가 방식">
-            <button aria-pressed={mode === "one"} onClick={() => setMode("one")} className={`rounded-md px-3 py-1 text-sm ${mode === "one" ? "bg-ink text-bg" : "text-mute"}`}>하나씩</button>
-            <button aria-pressed={mode === "repeat"} onClick={() => setMode("repeat")} className={`rounded-md px-3 py-1 text-sm ${mode === "repeat" ? "bg-ink text-bg" : "text-mute"}`}>반복 등록</button>
+            <button aria-pressed={mode === "one"} onClick={() => setMode("one")} className={`rounded-md px-3 py-2 text-sm min-h-[40px] sm:min-h-0 sm:py-1 ${mode === "one" ? "bg-ink text-bg" : "text-mute"}`}>하나씩</button>
+            <button aria-pressed={mode === "repeat"} onClick={() => setMode("repeat")} className={`rounded-md px-3 py-2 text-sm min-h-[40px] sm:min-h-0 sm:py-1 ${mode === "repeat" ? "bg-ink text-bg" : "text-mute"}`}>반복 등록</button>
           </div>
         </div>
         {mode === "repeat" ? (

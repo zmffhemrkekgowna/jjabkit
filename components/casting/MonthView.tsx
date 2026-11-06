@@ -11,6 +11,8 @@ interface Props {
   /** 공연별 스케줄 색: 이 달력의 모든 회차 카드에 같은 색을 써요 */
   color?: string;
   onOpen: (date: string, sid?: string) => void;
+  /** 고른 날짜(없으면 ""). 날짜 칸을 누르면 onSelectDate가 불려요. */
+  selected?: string; onSelectDate?: (date: string) => void;
   onOpenEvent?: (e: EventItem) => void;
 }
 
@@ -38,7 +40,7 @@ export function weekBars(events: EventItem[], keys: string[], inMonth: boolean[]
   return { bars, lanes: ends.length };
 }
 
-export default function MonthView({ idx, cursor, sel, only, today, events = [], color, onOpen, onOpenEvent }: Props) {
+export default function MonthView({ idx, cursor, sel, only, today, events = [], color, onOpen, onOpenEvent, selected = "", onSelectDate }: Props) {
   const first = new Date(cursor.getFullYear(), cursor.getMonth(), 1);
   const last = new Date(cursor.getFullYear(), cursor.getMonth() + 1, 0);
   const days: Date[] = [];
@@ -68,10 +70,16 @@ export default function MonthView({ idx, cursor, sel, only, today, events = [], 
                     const isToday = k === today;
                     const dateCls = !inMonth[i] ? "opacity-30" : day.getDay() === 0 ? "text-brand" : "";
                     return (
-                      <div key={k} role="gridcell" className={`flex min-h-[3.75rem] min-w-0 flex-col gap-0.5 px-0.5 pb-0.5 sm:min-h-[5rem] sm:gap-1 sm:px-1 sm:pb-1 ${!inMonth[i] ? "bg-bg" : hit > 0 ? "bg-hit" : "bg-card"}`}>
-                        <span className="flex h-5 shrink-0 items-center justify-center">
-                          <span className={`inline-flex h-5 min-w-5 items-center justify-center rounded-full px-1 text-[11px] tabular-nums sm:text-xs ${isToday && inMonth[i] ? "bg-brand font-bold text-onbrand" : dateCls}`}>{day.getDate()}</span>
-                        </span>
+                      <div key={k} role="gridcell" data-date={k} aria-selected={inMonth[i] ? k === selected : undefined} className={`flex min-h-[3.75rem] min-w-0 flex-col gap-0.5 px-0.5 pb-0.5 sm:min-h-[5rem] sm:gap-1 sm:px-1 sm:pb-1 ${!inMonth[i] ? "bg-bg" : hit > 0 ? "bg-hit" : "bg-card"} ${k === selected && inMonth[i] ? "outline outline-2 -outline-offset-2 outline-[var(--brand)]" : ""}`}>
+                        {inMonth[i] && onSelectDate ? (
+                          <button onClick={() => onSelectDate(k)} aria-label={`${fmtDate(day)} 회차 보기`} className="flex h-7 shrink-0 items-center justify-center">
+                            <span className={`inline-flex h-5 min-w-5 items-center justify-center rounded-full px-1 text-[11px] tabular-nums sm:text-xs ${isToday ? "bg-brand font-bold text-onbrand" : dateCls}`}>{day.getDate()}</span>
+                          </button>
+                        ) : (
+                          <span className="flex h-7 shrink-0 items-center justify-center">
+                            <span className={`inline-flex h-5 min-w-5 items-center justify-center rounded-full px-1 text-[11px] tabular-nums sm:text-xs ${isToday && inMonth[i] ? "bg-brand font-bold text-onbrand" : dateCls}`}>{day.getDate()}</span>
+                          </span>
+                        )}
                         {lanes > 0 && <span aria-hidden style={{ height: `calc(${lanes} * var(--lane))` }} className="block shrink-0" />}
                         {list.map((s) => {
                           const ok = sel.size > 0 && matches(idx, s, sel);
@@ -83,7 +91,7 @@ export default function MonthView({ idx, cursor, sel, only, today, events = [], 
                   })}
                 </div>
                 {bars.length > 0 && (
-                  <div className="pointer-events-none absolute inset-x-0 top-5">
+                  <div className="pointer-events-none absolute inset-x-0 top-7">
                     {bars.map((b) => (
                       <button key={b.ev.id} onClick={() => onOpenEvent?.(b.ev)} aria-label={`이벤트 ${b.ev.title}, 자세히 보기`}
                         style={{ top: `calc(${b.lane} * var(--lane))`, height: "calc(var(--lane) - 2px)", left: `calc(${b.col} / 7 * 100% + 1px)`, width: `calc(${b.span} / 7 * 100% - 2px)`, ...(isHex6(b.ev.color) ? { background: b.ev.color, color: readableOn(b.ev.color) } : {}) }}

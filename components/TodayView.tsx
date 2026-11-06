@@ -10,9 +10,11 @@ import { isHttpUrl } from "@/lib/period";
 import { fmtDate, fromKey } from "@/lib/casting";
 import { useTodayKST } from "@/lib/useToday";
 import { useMySched } from "@/lib/mySched";
+import { useFavorites } from "@/lib/favorites";
 import { NO_CAST, castNames, eventsOnDate, groupByDate, groupByTime, shiftDate, validDate } from "@/lib/today";
 import { readableText } from "@/lib/color";
 import { showColor } from "@/lib/mySchedule";
+import UserDataSync from "./UserDataSync";
 import HomeTabs from "./HomeTabs";
 import AdSenseBanner from "./ads/AdSenseBanner";
 import { ADSENSE_SLOT_LIST } from "@/lib/ads";
@@ -36,10 +38,14 @@ export default function TodayView({ shows, events = [], serverToday }: { shows: 
   const groups = useMemo(() => groupByDate(shows, date), [shows, date]);
   const slots = useMemo(() => groupByTime(groups), [groups]);
   const mine = useMySched();
+  const fav = useFavorites();
+  const sessionCount = slots.reduce((n, sl) => n + sl.rows.length, 0);
+  const band = (t: string) => { const h = Number(t.slice(0, 2)); return h < 12 ? "오전" : h < 17 ? "오후" : "저녁"; };
   const d = fromKey(date);
 
   return (
-    <div className="mx-auto max-w-3xl pb-10">
+    <div className="mx-auto max-w-3xl pb-10 lg:max-w-5xl">
+      <UserDataSync shows={shows} />
       <header className="sticky top-11 z-30 border-b border-line bg-bg">
         <HomeTabs active="today" />
         <div className="px-4 py-3">
@@ -54,12 +60,15 @@ export default function TodayView({ shows, events = [], serverToday }: { shows: 
       </header>
 
       <main className="px-4 pt-4">
-        <h2 className="mb-2 text-base font-bold">{fmtDate(d)}</h2>
+        <div className="mb-2 flex flex-wrap items-baseline gap-x-3">
+          <h2 className="text-base font-bold">{fmtDate(d)}</h2>
+          {groups.length > 0 && <p aria-live="polite" className="text-sm text-mute">공연 {groups.length}개 · 총 {sessionCount}회차</p>}
+        </div>
         {groups.length > 0 ? (
           <div aria-label="공연 목록" role="group" className="space-y-5">
             {slots.map(({ time, rows }) => (
               <section key={time} aria-label={`${time} 공연`}>
-                <p className="mb-1.5 text-xl font-medium tabular-nums">{time}</p>
+                <p className="mb-1.5 flex items-baseline gap-2 text-xl font-medium tabular-nums">{time}<span className="text-xs font-normal text-mute">{band(time)}</span></p>
                 <ul className="border border-line bg-card">
                   {rows.map(({ show, session: s }) => {
                     const evs = eventsOnDate(events, show.id, date); // 이 공연·이 날짜에 적용되는 이벤트(관리자가 등록한 것)
@@ -80,8 +89,9 @@ export default function TodayView({ shows, events = [], serverToday }: { shows: 
                                 ? <a key={e.id} href={e.linkUrl} target="_blank" rel="noopener noreferrer" title="이벤트 공지 보기 (새 탭)" className={`${cls} pointer-events-auto relative z-10 underline-offset-2 hover:underline`}>{e.title}</a>
                                 : <span key={e.id} className={cls}>{e.title}</span>;
                             })}
-                            <span>{names.length ? names.join(", ") : NO_CAST}</span>
+                            <span>{names.length ? names.map((n, i) => (<span key={n + i}>{i > 0 && ", "}{fav.ready && fav.actors.has(n) ? <b className="text-brand">♥ {n}</b> : n}</span>)) : NO_CAST}</span>
                           </p>
+                          {fav.ready && fav.shows.has(show.id) && <span className="shrink-0 rounded-full border border-brand px-2 py-0.5 text-xs font-bold text-brand">관심 공연</span>}
                           {mine.ready && mine.has(s.id) && <span className="shrink-0 rounded-full bg-hit px-2 py-0.5 text-xs font-bold text-brand">내 일정</span>}
                           <ChevronRight size={16} className="shrink-0 text-mute" aria-hidden />
                         </div>

@@ -18,6 +18,8 @@ import { HeartButton } from "../ui/HeartButton";
 import { CurtainTag } from "../ui/Tags";
 import ShowCard from "../ShowCard";
 import SessionSheet from "../casting/SessionSheet";
+import StatsPanel from "./StatsPanel";
+import UserDataSync from "../UserDataSync";
 import MySchedCalendar from "./MySchedCalendar";
 import ShareBar from "../ShareBar";
 import { mySchedSpec } from "@/lib/calendarImage";
@@ -26,6 +28,13 @@ import { ddayText, nextMine } from "@/lib/home";
 import { downloadBlob } from "@/lib/download";
 
 type Tab = MyTab;
+const TAB_HELP: Record<Tab, string> = {
+  show: "하트로 담아 둔 공연 모음이에요.",
+  actor: "하트로 담아 둔 배우와 그 배우가 나오는 공연이에요.",
+  fsched: "관심 배우가 출연하는 모든 회차예요. 내가 보러 가기로 한 날과는 별개예요.",
+  stats: "내 일정에서 ‘관극 완료’로 직접 표시한 회차만 센 통계예요. 관심 배우의 출연 일정이나 앞으로의 일정은 들어가지 않아요.",
+  sched: "내가 직접 ‘내 일정 추가’로 담은 관람 일정이에요.",
+};
 const firstOfMonth = (d: Date) => new Date(d.getFullYear(), d.getMonth(), 1);
 
 function Empty({ text }: { text: string }) {
@@ -39,13 +48,8 @@ function Empty({ text }: { text: string }) {
 
 export default function MyPage({ shows }: { shows: Show[] }) {
   const fav = useFavorites();
-  const { ready, pruneShows } = fav;
-  // 공연이 하나도 없다면 DB 점검·복구 중일 수 있어요. 이때는 저장된 하트·내 일정을 지우지 않아요.
-  useEffect(() => { if (ready && shows.length > 0) pruneShows(new Set(shows.map((s) => s.id))); }, [ready, pruneShows, shows]);
-  // 내 일정: 직접 추가한 회차(id)만 모아요. 관심 배우와는 별개로 저장돼요. 지워진 회차는 정리해요.
+  // 공연 id가 바뀌어도(전체 교체 복원) 하트·내 일정이 끊기지 않게 UserDataSync가 제목·날짜·시간으로 이어 붙여요.
   const mySched = useMySched();
-  const { ready: mReady, prune: pruneSessions } = mySched;
-  useEffect(() => { if (mReady && shows.length > 0) pruneSessions(new Set(shows.flatMap((s) => s.sessions.map((x) => x.id)))); }, [mReady, pruneSessions, shows]);
   const myItems = useMemo(() => {
     const out: { show: Show; session: Show["sessions"][number] }[] = [];
     for (const show of shows) for (const session of show.sessions) if (mySched.ids.has(session.id)) out.push({ show, session });
@@ -104,10 +108,11 @@ export default function MyPage({ shows }: { shows: Show[] }) {
   const toggleHidden = (n: string) => setHidden((h) => { const c = new Set(h); if (c.has(n)) c.delete(n); else c.add(n); return c; });
   const open = (i: MyItem) => setSheet({ showId: i.show.id, date: i.session.date, sid: i.session.id });
   const seg = (on: boolean) => `rounded-md px-3 py-1 text-sm ${on ? "bg-ink text-bg" : "text-mute"}`;
-  const tabs: [Tab, string][] = [["show", `관심 공연 ${favShows.length}`], ["actor", `관심 배우 ${names.length}`], ["fsched", "관심 배우 일정"], ["sched", `내 일정${myItems.length ? ` ${myItems.length}` : ""}`]];
+  const tabs: [Tab, string][] = [["show", `관심 공연 ${favShows.length}`], ["actor", `관심 배우 ${names.length}`], ["fsched", "관심 배우 일정"], ["sched", `내 일정${myItems.length ? ` ${myItems.length}` : ""}`], ["stats", "관극 통계"]];
 
   return (
-    <div className="mx-auto max-w-3xl pb-10">
+    <div className="mx-auto max-w-3xl pb-10 lg:max-w-5xl">
+      <UserDataSync shows={shows} />
       <header className="px-4 pb-3 pt-5">
         <h1 className="font-serif text-xl font-bold">마이페이지</h1>
         <p className="mt-1 text-xs text-mute">하트로 등록한 관심 공연·관심 배우와 내가 추가한 일정이 이 브라우저에 저장돼요.</p>
@@ -123,6 +128,7 @@ export default function MyPage({ shows }: { shows: Show[] }) {
       </nav>
 
       <main className="space-y-3 px-4 pt-4">
+        <p className="text-xs text-mute">{TAB_HELP[tab]}</p>
         {tab === "show" && (favShows.length > 0 ? (
           <div className="grid grid-cols-2 gap-x-3 gap-y-5 sm:grid-cols-3 sm:gap-x-4">
             {favShows.map((s) => <ShowCard key={s.id} show={s} />)}
@@ -177,7 +183,7 @@ export default function MyPage({ shows }: { shows: Show[] }) {
                   {aq && <button onClick={() => setAq("")} aria-label="검색어 지우기" className="absolute right-0 top-1/2 grid h-11 w-11 -translate-y-1/2 place-items-center text-mute"><X size={14} aria-hidden /></button>}
                 </div>
               )}
-              <div className="flex flex-wrap gap-1.5" role="group" aria-label="일정에 포함할 배우">
+              <div className="flex max-h-44 flex-wrap gap-1.5 overflow-y-auto overscroll-contain" role="group" aria-label="일정에 포함할 배우">
                 {chipNames.map((n) => (
                   <button key={n} aria-pressed={!hidden.has(n)} onClick={() => toggleHidden(n)}
                     className={`inline-flex min-h-[40px] items-center gap-1 rounded-full border px-3 text-sm ${hidden.has(n) ? "border-line text-mute line-through" : "border-brand bg-brand text-onbrand"}`}>
@@ -291,6 +297,8 @@ export default function MyPage({ shows }: { shows: Show[] }) {
             )}
           </>
         ))}
+
+        {tab === "stats" && <StatsPanel />}
 
         {tab === "sched" && (myItems.length === 0 ? (
           <div className="rounded-2xl border border-line bg-card p-8 text-center">
