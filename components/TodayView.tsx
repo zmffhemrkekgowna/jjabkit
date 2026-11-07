@@ -65,35 +65,39 @@ export default function TodayView({ shows, events = [], serverToday }: { shows: 
           {groups.length > 0 && <p aria-live="polite" className="text-sm text-mute">공연 {groups.length}개 · 총 {sessionCount}회차</p>}
         </div>
         {groups.length > 0 ? (
-          <div aria-label="공연 목록" role="group" className="space-y-5">
+          <div aria-label="공연 목록" role="group" className="space-y-6">
             {slots.map(({ time, rows }) => (
               <section key={time} aria-label={`${time} 공연`}>
-                <p className="mb-1.5 flex items-baseline gap-2 text-xl font-medium tabular-nums">{time}<span className="text-xs font-normal text-mute">{band(time)}</span></p>
+                <p className="mb-2 flex items-baseline gap-2 text-xl font-medium tabular-nums">{time}<span className="text-xs font-normal text-mute">{band(time)}</span></p>
                 <ul className="border border-line bg-card">
                   {rows.map(({ show, session: s }) => {
                     const evs = eventsOnDate(events, show.id, date); // 이 공연·이 날짜에 적용되는 이벤트(관리자가 등록한 것)
                     const names = castNames(show, s);
                     const bg = showColor(show);
+                    const isFavShow = fav.ready && fav.shows.has(show.id);
+                    const isMine = mine.ready && mine.has(s.id);
                     return (
-                      <li key={s.id} className="relative flex min-h-[3.5rem] border-b border-line last:border-b-0 hover:bg-hit">
+                      <li key={s.id} className="relative flex border-b border-line last:border-b-0 hover:bg-hit">
                         {/* 줄 전체를 누르면 회차 상세로. 이벤트 배지(링크)만 그 위에서 따로 눌려요. */}
                         <Link href={`/shows/${show.id}?d=${s.date}&s=${s.id}`} aria-label={`${show.title} ${s.time} 회차 상세`} className="absolute inset-0" />
-                        <div className="pointer-events-none flex w-[32%] min-w-[6.25rem] max-w-[13rem] shrink-0 items-center px-3 py-2.5" style={{ backgroundColor: bg, color: readableText(bg) }}>
-                          <h3 className="break-keep text-[15px] font-medium leading-snug">{show.title}{show.genre !== "뮤지컬" && <span className="ml-1 whitespace-nowrap text-xs font-normal opacity-80">- {show.genre}</span>}</h3>
+                        {/* 왼쪽 열: 공연명(가로·세로 가운데). 폭은 화면의 약 30%, 좁은 화면에서도 너무 좁아지지 않게 하한을 둬요. 높이는 오른쪽과 같이 늘어나요. */}
+                        <div className="pointer-events-none flex w-[30%] min-w-[6.5rem] max-w-[13rem] shrink-0 items-center justify-center px-2.5 py-3 text-center sm:px-3" style={{ backgroundColor: bg, color: readableText(bg) }}>
+                          <h3 className="min-w-0 break-keep text-[15px] font-medium leading-snug [overflow-wrap:anywhere]">{show.title}{show.genre !== "뮤지컬" && <span className="ml-1 whitespace-nowrap text-xs font-normal opacity-80">- {show.genre}</span>}</h3>
                         </div>
-                        <div className="pointer-events-none flex min-w-0 flex-1 items-center gap-2 px-3 py-2.5">
-                          <p className={`min-w-0 flex-1 break-words text-sm leading-relaxed ${names.length ? "" : "text-mute"}`}>
+                        {/* 오른쪽 열: 이벤트 배지 → 배우 이름 순으로 한 흐름에서 줄바꿈돼요. */}
+                        <div className="pointer-events-none flex min-w-0 flex-1 items-center px-3 py-3">
+                          <p className={`min-w-0 flex-1 text-left text-sm leading-7 [overflow-wrap:anywhere] ${names.length ? "" : "text-mute"}`}>
                             {evs.map((e) => {
-                              const cls = "mr-1.5 inline-block max-w-full break-words rounded-md bg-hit px-2 py-0.5 align-baseline text-[13px] font-medium leading-snug text-brand";
+                              const cls = "mr-1.5 inline-block max-w-full break-words rounded bg-hit px-2 py-0.5 align-baseline text-[13px] font-medium leading-snug text-brand";
                               return isHttpUrl(e.linkUrl)
                                 ? <a key={e.id} href={e.linkUrl} target="_blank" rel="noopener noreferrer" title="이벤트 공지 보기 (새 탭)" className={`${cls} pointer-events-auto relative z-10 underline-offset-2 hover:underline`}>{e.title}</a>
                                 : <span key={e.id} className={cls}>{e.title}</span>;
                             })}
-                            <span>{names.length ? names.map((n, i) => (<span key={n + i}>{i > 0 && ", "}{fav.ready && fav.actors.has(n) ? <b className="text-brand">♥ {n}</b> : n}</span>)) : NO_CAST}</span>
+                            {/* 배우 이름은 이름 단위로만 줄바꿈해요(이름 중간에서 끊기지 않게). */}
+                            <span>{names.length ? names.map((n, i) => (<span key={n + i}><span className="whitespace-nowrap">{fav.ready && fav.actors.has(n) ? <b className="text-brand">♥ {n}</b> : n}{i < names.length - 1 && ","}</span>{" "}</span>)) : NO_CAST}</span>
+                            {isFavShow && <span className="ml-1.5 inline-block rounded border border-brand px-1.5 py-0.5 align-baseline text-xs font-bold leading-none text-brand">관심 공연</span>}
+                            {isMine && <span className="ml-1.5 inline-block rounded bg-hit px-1.5 py-0.5 align-baseline text-xs font-bold leading-none text-brand">내 일정</span>}
                           </p>
-                          {fav.ready && fav.shows.has(show.id) && <span className="shrink-0 rounded-full border border-brand px-2 py-0.5 text-xs font-bold text-brand">관심 공연</span>}
-                          {mine.ready && mine.has(s.id) && <span className="shrink-0 rounded-full bg-hit px-2 py-0.5 text-xs font-bold text-brand">내 일정</span>}
-                          <ChevronRight size={16} className="shrink-0 text-mute" aria-hidden />
                         </div>
                       </li>
                     );
