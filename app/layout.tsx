@@ -5,6 +5,7 @@ import ModeBar from "@/components/ModeBar";
 import AdSenseScript from "@/components/ads/AdSenseScript";
 import SponsorPopup from "@/components/ads/SponsorPopup";
 import BottomNav from "@/components/BottomNav";
+import PageViewBeacon from "@/components/PageViewBeacon";
 import SiteFooter from "@/components/SiteFooter";
 import { FavoritesProvider } from "@/lib/favorites";
 import { MySchedProvider } from "@/lib/mySched";
@@ -49,6 +50,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
           <BottomNav />
           </MySchedProvider>
         </FavoritesProvider>
+        <PageViewBeacon skip={isAdmin} />
         <AdSenseScript />
       </body>
     </html>

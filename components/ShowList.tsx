@@ -55,7 +55,7 @@ function RecentStrip({ shows, onClear }: { shows: Show[]; onClear: () => void })
   }, [shows]);
   return (
     <section aria-label="최근 본 공연" className="mb-4 rounded-2xl border border-line bg-card px-3 pb-2 pt-1">
-      <div className="flex min-h-[44px] items-center justify-between gap-2">
+      <div className={`flex ${shows.length ? "min-h-[44px]" : "min-h-[36px]"} items-center justify-between gap-2`}>
         <h2 className="text-xs font-bold text-mute">최근 본 공연</h2>
         {shows.length > 0 && (ask ? (
           <span className="flex items-center gap-1 text-xs" role="group" aria-label="기록 지우기 확인">
@@ -66,7 +66,7 @@ function RecentStrip({ shows, onClear }: { shows: Show[]; onClear: () => void })
         ) : <button onClick={() => setAsk(true)} className="min-h-[44px] px-2 text-xs text-mute underline">기록 지우기</button>)}
       </div>
       {shows.length === 0 ? (
-        <p className="pb-2 text-sm text-mute">아직 본 공연이 없어요. 공연을 열어 보면 여기에 쌓여요.</p>
+        <p className="pb-2 text-xs text-mute">아직 없어요. 공연을 열어 보면 여기에 쌓여요.</p>
       ) : (
         <div className="relative">
           <ul ref={ref} className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-2 [scrollbar-width:thin]">

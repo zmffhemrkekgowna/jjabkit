@@ -108,7 +108,8 @@ export default function MyPage({ shows }: { shows: Show[] }) {
   const toggleHidden = (n: string) => setHidden((h) => { const c = new Set(h); if (c.has(n)) c.delete(n); else c.add(n); return c; });
   const open = (i: MyItem) => setSheet({ showId: i.show.id, date: i.session.date, sid: i.session.id });
   const seg = (on: boolean) => `rounded-md px-3 py-1 text-sm ${on ? "bg-ink text-bg" : "text-mute"}`;
-  const tabs: [Tab, string][] = [["show", `관심 공연 ${favShows.length}`], ["actor", `관심 배우 ${names.length}`], ["fsched", "관심 배우 일정"], ["sched", `내 일정${myItems.length ? ` ${myItems.length}` : ""}`], ["stats", "관극 통계"]];
+  // [id, PC 이름, 모바일 짧은 이름] — 좁은 화면에서도 다섯 탭이 잘리지 않게 짧은 이름을 써요.
+  const tabs: [Tab, string, string][] = [["show", `관심 공연 ${favShows.length}`, `관심 공연 ${favShows.length}`], ["actor", `관심 배우 ${names.length}`, `관심 배우 ${names.length}`], ["fsched", "관심 배우 일정", "배우 일정"], ["sched", `내 일정${myItems.length ? ` ${myItems.length}` : ""}`, `내 일정${myItems.length ? ` ${myItems.length}` : ""}`], ["stats", "관극 통계", "통계"]];
 
   return (
     <div className="mx-auto max-w-3xl pb-10 lg:max-w-5xl">
@@ -119,10 +120,10 @@ export default function MyPage({ shows }: { shows: Show[] }) {
       </header>
 
       <nav role="tablist" className="sticky top-11 z-30 flex overflow-x-auto border-b border-line bg-bg px-2 sm:px-4">
-        {tabs.map(([id, label]) => (
+        {tabs.map(([id, label, short]) => (
           <button key={id} role="tab" aria-selected={tab === id} onClick={() => setTab(id)}
-            className={`-mb-px shrink-0 whitespace-nowrap border-b-2 px-2.5 py-3 text-[13px] font-bold sm:px-4 sm:text-sm ${tab === id ? "border-brand text-brand" : "border-transparent text-mute"}`}>
-            {label}
+            className={`-mb-px shrink-0 whitespace-nowrap border-b-2 px-2 py-3 text-[13px] font-bold min-[400px]:px-2.5 sm:px-4 sm:text-sm ${tab === id ? "border-brand text-brand" : "border-transparent text-mute"}`}>
+            <span className="sm:hidden">{short}</span><span className="hidden sm:inline">{label}</span>
           </button>
         ))}
       </nav>

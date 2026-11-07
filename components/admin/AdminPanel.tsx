@@ -14,13 +14,14 @@ import ShowsAdmin from "./ShowsAdmin";
 import PopupsAdmin from "./PopupsAdmin";
 import NoticesAdmin, { type NoticeDraft } from "./NoticesAdmin";
 import BackupPanel from "./BackupPanel";
+import StatsAdmin from "./StatsAdmin";
 import PagesAdmin from "./PagesAdmin";
 import ToastHost from "./ToastHost";
 import type { CustomPage, PageSlug, SitePage } from "@/types/page";
 import type { Tab } from "@/lib/adminTabs";
 
 export type { Tab };
-const TABS: [Tab, string][] = [["shows", "공연 관리"], ["popups", "팝업 광고"], ["notices", "소식·공지"], ["pages", "안내 페이지"], ["backup", "백업·복구"]];
+const TABS: [Tab, string][] = [["shows", "공연 관리"], ["popups", "팝업 광고"], ["notices", "소식·공지"], ["pages", "안내 페이지"], ["backup", "백업·복구"], ["stats", "방문자 통계"]];
 
 export default function AdminPanel({ shows, notices, events, popups, pages, customPages = [], initialTab = "shows" }: { shows: Show[]; notices: Notice[]; events: EventItem[]; popups: Popup[]; pages: Record<PageSlug, SitePage & { custom: boolean }>; customPages?: CustomPage[]; initialTab?: Tab }) {
   const router = useRouter();
@@ -58,6 +59,7 @@ export default function AdminPanel({ shows, notices, events, popups, pages, cust
       {tab === "notices" && <NoticesAdmin notices={notices} shows={shows} draft={draft} />}
       {tab === "pages" && <PagesAdmin pages={pages} customPages={customPages} />}
       {tab === "backup" && <BackupPanel shows={shows} events={events} />}
+      {tab === "stats" && <StatsAdmin />}
       <ToastHost />
     </div>
   );
