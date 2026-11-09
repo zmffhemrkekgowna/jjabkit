@@ -19,6 +19,7 @@ export default function SponsorPopup({ popups }: { popups: Popup[] }) {
   const decided = useRef(false); // 한 번 판단하면 같은 방문 중엔 다시 띄우지 않아요
   const [list, setList] = useState<Popup[]>([]);
   const [i, setI] = useState(0);
+  const [broken, setBroken] = useState<Set<string>>(new Set()); // 이미지를 못 불러온 팝업은 평소 모양(글자 포함)으로 보여줘요
   const dialogRef = useRef<HTMLDivElement>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
   const opener = useRef<Element | null>(null);
@@ -65,11 +66,18 @@ export default function SponsorPopup({ popups }: { popups: Popup[] }) {
   if (!open || path.startsWith("/admin")) return null;
   const p = list[Math.min(i, list.length - 1)];
   const [g1, g2] = p.gradient.split(",");
-  const body = (
+  const imgOnly = p.imageOnly && !!p.imageUrl && isHttpUrl(p.imageUrl) && !broken.has(p.id);
+  const body = imgOnly ? (
+    <div className="relative aspect-[4/5] w-full overflow-hidden bg-card">
+      <h2 id="popup-title" className="sr-only">{p.title}</h2>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src={p.imageUrl} alt={p.title} onError={() => setBroken((s) => new Set(s).add(p.id))} className="absolute inset-0 h-full w-full object-cover" />
+    </div>
+  ) : (
     <div className="relative aspect-[4/5] w-full overflow-hidden text-white"
       style={p.imageUrl && isHttpUrl(p.imageUrl) ? undefined : { backgroundImage: `linear-gradient(160deg, ${g1}, ${g2})` }}>
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      {p.imageUrl && isHttpUrl(p.imageUrl) && <img src={p.imageUrl} alt="" className="absolute inset-0 h-full w-full object-cover" />}
+      {p.imageUrl && isHttpUrl(p.imageUrl) && <img src={p.imageUrl} alt="" onError={() => setBroken((s) => new Set(s).add(p.id))} className="absolute inset-0 h-full w-full object-cover" />}
       <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/10 to-black/30" />
       <span className="absolute left-3 top-3 rounded bg-black/55 px-1.5 py-0.5 text-[11px] font-medium">{p.label || "광고"}</span>
       <div className="absolute inset-x-0 bottom-0 p-5">

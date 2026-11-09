@@ -11,6 +11,8 @@ export interface Popup {
   gradient: string;
   startsOn: string;
   endsOn: string;
+  /** true면 제목·문구·버튼·그림자·'광고' 글자 없이 이미지만 보여줘요(이미지가 있어야 해요). */
+  imageOnly: boolean;
   active: boolean;
   sortOrder: number;
   createdAt: string;

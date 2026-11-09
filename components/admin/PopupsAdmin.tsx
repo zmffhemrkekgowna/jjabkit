@@ -12,7 +12,7 @@ const GRADIENTS: [string, string][] = [
   ["#3b1d5a,#c2410c", "보라 · 주황"], ["#0f3d3e,#b45309", "청록 · 갈색"], ["#1c2b4a,#8B1E3F", "남색 · 자주"],
   ["#240046,#ff6ec7", "보라 · 분홍"], ["#1b1b1b,#84a98c", "검정 · 연두"],
 ];
-const EMPTY: PopupInput = { title: "", body: "", label: "광고 · 제휴", cta: "자세히 보기", linkUrl: "", imageUrl: "", gradient: GRADIENTS[0][0], startsOn: "", endsOn: "", active: true, sortOrder: 0 };
+const EMPTY: PopupInput = { title: "", body: "", label: "광고 · 제휴", cta: "자세히 보기", linkUrl: "", imageUrl: "", gradient: GRADIENTS[0][0], startsOn: "", endsOn: "", imageOnly: false, active: true, sortOrder: 0 };
 
 /** 팝업 광고 여러 개 등록·기간 지정. 홈 첫 진입 때 '켜 둠 + 기간 안'인 것이 한 장씩 넘겨 볼 수 있게 떠요. */
 export default function PopupsAdmin({ popups }: { popups: Popup[] }) {
@@ -36,12 +36,12 @@ export default function PopupsAdmin({ popups }: { popups: Popup[] }) {
 
   const save = async () => {
     if (problem) { setMsg(problem); return; }
-    const ok = await run((db) => (editing ? updatePopup(db, editing, form) : createPopup(db, form)), editing ? "팝업을 수정했어요." : "팝업을 올렸어요.");
+    const ok = await run((db) => (editing ? updatePopup(db, editing, form, !!popups.find((x) => x.id === editing)?.imageOnly) : createPopup(db, form)), editing ? "팝업을 수정했어요." : "팝업을 올렸어요.");
     if (ok) reset();
   };
   const edit = (p: Popup) => {
     setEditing(p.id); setMsg("");
-    setForm({ title: p.title, body: p.body, label: p.label, cta: p.cta, linkUrl: p.linkUrl, imageUrl: p.imageUrl, gradient: p.gradient, startsOn: p.startsOn, endsOn: p.endsOn, active: p.active, sortOrder: p.sortOrder });
+    setForm({ title: p.title, body: p.body, label: p.label, cta: p.cta, linkUrl: p.linkUrl, imageUrl: p.imageUrl, gradient: p.gradient, startsOn: p.startsOn, endsOn: p.endsOn, imageOnly: p.imageOnly, active: p.active, sortOrder: p.sortOrder });
   };
   const [g1, g2] = form.gradient.split(",");
 
@@ -66,6 +66,13 @@ export default function PopupsAdmin({ popups }: { popups: Popup[] }) {
           <Fld label="이미지 주소 (선택)" className="sm:col-span-2">
             <input value={form.imageUrl} maxLength={500} onChange={(e) => set("imageUrl", e.target.value)} className={inp} placeholder="https://.../poster.jpg" inputMode="url" />
           </Fld>
+          <div className="sm:col-span-2">
+            <label className={`flex min-h-[44px] items-center gap-2 rounded-lg border border-line px-3 text-sm ${form.imageUrl.trim() ? "" : "opacity-60"}`}>
+              <input type="checkbox" checked={form.imageOnly && !!form.imageUrl.trim()} disabled={!form.imageUrl.trim()} onChange={(e) => set("imageOnly", e.target.checked)} className="h-4 w-4" />
+              <span className="font-medium">이미지만 표시</span>
+            </label>
+            <p className="mt-1 text-xs text-mute">{form.imageUrl.trim() ? "체크하면 제목·문구·버튼·어두운 그림자·'광고' 글자 없이 이미지만 떠요. 링크를 넣었으면 이미지를 눌러 이동해요. (제목은 화면에 안 보여도 필수예요. 팝업 목록에서 구분하는 데 써요.)" : "이미지 주소를 먼저 넣으면 고를 수 있어요."}</p>
+          </div>
           <Fld label="배경색 (이미지가 없을 때)">
             <select value={form.gradient} onChange={(e) => set("gradient", e.target.value)} className={inp}>
               {GRADIENTS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
@@ -99,7 +106,7 @@ export default function PopupsAdmin({ popups }: { popups: Popup[] }) {
                       <span className="tabular-nums">{periodText(p)}</span>
                       <span>순서 {p.sortOrder}</span>
                     </div>
-                    <div className="mt-1 truncate text-sm font-bold">{p.title}</div>
+                    <div className="mt-1 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-sm font-bold"><span className="min-w-0 break-words">{p.title}</span>{p.imageOnly && <span className="shrink-0 rounded-full border border-line px-1.5 py-0.5 text-[11px] font-medium text-mute">이미지만</span>}</div>
                   </div>
                   {delId === p.id ? (
                     <>
