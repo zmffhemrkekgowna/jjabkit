@@ -17,7 +17,7 @@ function previewOf(body: string): string {
 export default async function GuidePage() {
   const db = await createClient().catch(() => null);
   const { builtin, custom } = await fetchSitePagesSafe(db);
-  const ad = { href: "/guide/popup-ads", title: "팝업 광고 문의", body: "짭킷 홈 화면 팝업 광고의 이미지 규격과 노출 방식, 게재 문의 방법을 안내해요.", ad: true };
+  const ad = { href: "/guide/popup-ads", title: "팝업 광고 문의", body: "짭킷 홈 화면 팝업 광고의 이미지 규격과 노출 방식, 게재 문의 방법을 안내해요." };
   const page = (s: "about" | "privacy" | "contact") => ({ href: `/${s}`, title: builtin[s].title, body: builtin[s].body });
   // 순서: (관리자가 추가한 안내) → 소개 → 개인정보처리방침 → 팝업 광고 문의 → 문의
   const items = [
@@ -33,10 +33,7 @@ export default async function GuidePage() {
           <li key={it.href}>
             <Link href={it.href} className="flex items-center gap-3 px-4 py-3 hover:bg-hit">
               <span className="min-w-0 flex-1">
-                <span className="flex items-center gap-1.5 font-medium">
-                  <span className="truncate">{it.title}</span>
-                  {"ad" in it && <span className="shrink-0 rounded-full border border-brand px-1.5 py-0.5 text-[11px] font-medium text-brand">광고주 안내</span>}
-                </span>
+                <span className="block truncate font-medium">{it.title}</span>
                 {previewOf(it.body) && <span className="mt-0.5 block truncate text-xs text-mute">{previewOf(it.body)}</span>}
               </span>
               <ChevronRight size={16} aria-hidden className="shrink-0 text-mute" />
