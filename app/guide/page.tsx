@@ -19,11 +19,11 @@ export default async function GuidePage() {
   const { builtin, custom } = await fetchSitePagesSafe(db);
   const page = (s: "about" | "privacy" | "contact") => ({ href: `/${s}`, title: builtin[s].title, body: builtin[s].body });
   const asItem = (p: { slug: string; title: string; body: string }) => ({ href: `/guide/${p.slug}`, title: p.title, body: p.body });
-  // 팝업 광고 문의(주소 popup-ads)는 관리자 화면에서 만든·고친 일반 안내 페이지예요. 순서만 소개 → 개인정보처리방침 → 팝업 광고 문의 → 문의로 맞춰요.
+  // 팝업 광고 문의(주소 popup-ads)는 관리자 화면에서 만든·고친 일반 안내 페이지예요. 목록 순서는 소개 → 개인정보처리방침 → 팝업 광고 문의 → 문의, 그 아래에 새로 추가한 안내가 추가한 순서대로 붙어요.
   const ad = custom.filter((p) => p.slug === "popup-ads").map(asItem);
   const items = [
-    ...custom.filter((p) => p.slug !== "popup-ads").map(asItem),
     page("about"), page("privacy"), ...ad, page("contact"),
+    ...custom.filter((p) => p.slug !== "popup-ads").map(asItem), // 관리자가 새로 추가한 안내는 아래로, 추가한 순서대로
   ];
   return (
     <div className="mx-auto max-w-2xl px-4 pb-10 pt-5">
