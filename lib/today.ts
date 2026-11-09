@@ -1,6 +1,7 @@
 import type { Session, Show } from "@/types/show";
 import type { EventItem } from "@/types/event";
 import { addDays, fromKey, toKey } from "./casting";
+import { eventsForDate } from "./eventScope";
 
 export const DATE_KEY = /^\d{4}-\d{2}-\d{2}$/;
 /** 'YYYY-MM-DD' 모양이면서 실제로 있는 날짜인지 */
@@ -36,9 +37,7 @@ export function groupByDate(shows: Show[], date: string): TodayGroup[] {
  * - 종료일이 비어 있으면 시작일 하루짜리예요. (달력 막대·공연 상세와 같은 규칙)
  */
 export function eventsOnDate(events: EventItem[], showId: string, date: string): EventItem[] {
-  return events
-    .filter((e) => e.showId === showId && !!e.startsOn && e.startsOn <= date && date <= (e.endsOn || e.startsOn))
-    .sort((a, b) => a.startsOn.localeCompare(b.startsOn) || a.createdAt.localeCompare(b.createdAt) || a.title.localeCompare(b.title, "ko"));
+  return eventsForDate(events, showId, date);
 }
 
 export interface TimeSlot { time: string; rows: { show: Show; session: Session }[] }

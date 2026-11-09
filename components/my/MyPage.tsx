@@ -150,12 +150,16 @@ export default function MyPage({ shows }: { shows: Show[] }) {
                     </div>
                     <HeartButton on onClick={() => fav.toggleActor(n)} label={n} size={20} />
                   </div>
-                  <ul className="mt-2 space-y-1">
+                  {/* 작품별로 칸을 나눠 서로 다른 작품이 이어진 글처럼 보이지 않게 해요. 작품명(굵게) · 역할 · 우측 회차 수 */}
+                  <ul className="mt-3 space-y-2">
                     {apps.map((a) => (
                       <li key={a.show.id + a.roleName}>
-                        <Link href={`/shows/${a.show.id}`} className="flex items-center justify-between gap-2 rounded-lg px-2 py-1.5 text-sm hover:bg-bg">
-                          <span className="min-w-0 truncate">{a.show.title} · {a.roleName}</span>
-                          <span className="shrink-0 text-xs text-mute">{a.count}회차</span>
+                        <Link href={`/shows/${a.show.id}`} className="flex items-start justify-between gap-3 rounded-lg border border-line bg-bg px-3 py-2 hover:border-brand">
+                          <span className="min-w-0 flex-1">
+                            <span className="block break-words text-sm font-bold leading-snug [overflow-wrap:anywhere]">{a.show.title}</span>
+                            <span className="mt-0.5 block break-words text-xs text-mute [overflow-wrap:anywhere]">{a.roleName}</span>
+                          </span>
+                          <span className="shrink-0 whitespace-nowrap pt-0.5 text-xs font-medium tabular-nums text-mute">{a.count}회차</span>
                         </Link>
                       </li>
                     ))}
@@ -199,14 +203,6 @@ export default function MyPage({ shows }: { shows: Show[] }) {
               </div>
             </div>
 
-            {nextActor && (
-              <button onClick={() => open(nextActor)} className="block w-full rounded-xl border border-brand bg-hit p-3 text-left">
-                <span className="text-xs font-bold text-brand">가장 가까운 출연 · {ddayText(Math.round((fromKey(nextActor.session.date).getTime() - fromKey(today).getTime()) / 86400e3))}</span>
-                <span className="mt-0.5 block font-bold">{fmtDate(fromKey(nextActor.session.date))} {nextActor.session.time} · {nextActor.show.title}</span>
-                <span className="mt-0.5 block truncate text-xs text-mute">{nextActor.hit.join(" · ")}{nextActor.show.venue ? ` · ${nextActor.show.venue}` : ""}</span>
-              </button>
-            )}
-
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-1">
                 <button onClick={() => step(-1)} disabled={!lo || cur <= lo} aria-label="이전 달" className="rounded-lg p-2 disabled:opacity-30"><ChevronLeft size={18} aria-hidden /></button>
@@ -218,23 +214,6 @@ export default function MyPage({ shows }: { shows: Show[] }) {
                 <button aria-pressed={view === "list"} onClick={() => setView("list")} className={seg(view === "list")}>목록</button>
               </div>
             </div>
-
-            {actorUpcoming.length > 0 && (
-              <div className="rounded-xl border border-line bg-card p-3">
-                <button onClick={() => downloadBlob(new Blob([buildIcs(actorUpcoming, new Date(), "JJabKit 관심 배우 일정")], { type: "text/calendar;charset=utf-8" }), icsActorsFileName([...shown]))}
-                  className="inline-flex min-h-[44px] items-center gap-1.5 rounded-lg border border-brand px-3 text-sm font-bold text-brand">
-                  <CalendarPlus size={15} aria-hidden />선택한 배우 일정 저장 (.ics)
-                </button>
-                <p className="mt-1.5 text-xs text-mute">선택한 배우 {shown.size}명의 앞으로 일정 {actorUpcoming.length}개가 들어가요. 화면에서 고른 배우·옵션이 그대로 반영돼요.</p>
-              </div>
-            )}
-            {items.length > 0 && (
-              <ShareBar
-                build={() => mySchedSpec(items, cur, [...shown])}
-                fileBase={`관심배우일정-${cur.getFullYear()}-${String(cur.getMonth() + 1).padStart(2, "0")}`}
-                shareTitle="내 관심 배우 일정" shareText={`내 관심 배우 일정 ${cur.getFullYear()}년 ${cur.getMonth() + 1}월 (${[...shown].join(", ")})`}
-              />
-            )}
 
             <p aria-live="polite" className="text-sm text-mute">
               {items.length === 0 ? (shown.size === 0 ? "선택한 배우가 없어요. 위에서 배우를 골라 주세요." : together ? "선택한 배우가 함께 출연하는 회차가 없어요. ‘함께 출연하는 회차만’을 꺼 보세요." : "선택한 관심 배우가 출연하는 회차가 아직 없어요. 공연 상세에서 다른 공연의 배우도 등록해 보세요.") : <>이번 달 출연 <b className="text-brand">{monthItems.length}</b>회차 · 전체 {items.length}회차</>}
@@ -296,6 +275,31 @@ export default function MyPage({ shows }: { shows: Show[] }) {
                 ))}
               </div>
             )}
+
+            {nextActor && (
+              <button onClick={() => open(nextActor)} className="block w-full rounded-xl border border-brand bg-hit p-3 text-left">
+                <span className="text-xs font-bold text-brand">가장 가까운 출연 · {ddayText(Math.round((fromKey(nextActor.session.date).getTime() - fromKey(today).getTime()) / 86400e3))}</span>
+                <span className="mt-0.5 block font-bold">{fmtDate(fromKey(nextActor.session.date))} {nextActor.session.time} · {nextActor.show.title}</span>
+                <span className="mt-0.5 block truncate text-xs text-mute">{nextActor.hit.join(" · ")}{nextActor.show.venue ? ` · ${nextActor.show.venue}` : ""}</span>
+              </button>
+            )}
+
+            {actorUpcoming.length > 0 && (
+              <div className="rounded-xl border border-line bg-card p-3">
+                <button onClick={() => downloadBlob(new Blob([buildIcs(actorUpcoming, new Date(), "JJabKit 관심 배우 일정")], { type: "text/calendar;charset=utf-8" }), icsActorsFileName([...shown]))}
+                  className="inline-flex min-h-[44px] items-center gap-1.5 rounded-lg border border-brand px-3 text-sm font-bold text-brand">
+                  <CalendarPlus size={15} aria-hidden />선택한 배우 일정 저장 (.ics)
+                </button>
+                <p className="mt-1.5 text-xs text-mute">선택한 배우 {shown.size}명의 앞으로 일정 {actorUpcoming.length}개가 들어가요. 화면에서 고른 배우·옵션이 그대로 반영돼요.</p>
+              </div>
+            )}
+            {items.length > 0 && (
+              <ShareBar
+                build={() => mySchedSpec(items, cur, [...shown])}
+                fileBase={`관심배우일정-${cur.getFullYear()}-${String(cur.getMonth() + 1).padStart(2, "0")}`}
+                shareTitle="내 관심 배우 일정" shareText={`내 관심 배우 일정 ${cur.getFullYear()}년 ${cur.getMonth() + 1}월 (${[...shown].join(", ")})`}
+              />
+            )}
           </>
         ))}
 
@@ -312,6 +316,8 @@ export default function MyPage({ shows }: { shows: Show[] }) {
           </div>
         ) : (
           <div className="space-y-5">
+            <MySchedCalendar items={myItems} now={now} today={today} onRemove={mySched.remove}
+              onOpenSession={(i) => setSheet({ showId: i.show.id, date: i.session.date, sid: i.session.id })} />
             {nextOwn && (
               <button onClick={() => setSheet({ showId: nextOwn.show.id, date: nextOwn.session.date, sid: nextOwn.session.id })}
                 className="block w-full rounded-xl border border-brand bg-hit p-3 text-left">
@@ -330,8 +336,6 @@ export default function MyPage({ shows }: { shows: Show[] }) {
                 <p className="mt-1.5 text-xs text-mute">다가오는 일정 {upcoming.length}개를 내려받아 열면 폰 캘린더에 들어가요. 하루 전·2시간 전 알림이 함께 들어가요.</p>
               </div>
             )}
-            <MySchedCalendar items={myItems} now={now} today={today} onRemove={mySched.remove}
-              onOpenSession={(i) => setSheet({ showId: i.show.id, date: i.session.date, sid: i.session.id })} />
           </div>
         ))}
       </main>

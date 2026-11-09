@@ -4,6 +4,7 @@ import { CalendarDays, ChevronRight } from "lucide-react";
 import { actorOf, fmtDate, fromKey, matches, visibleOn, type ShowIndex } from "@/lib/casting";
 import { CurtainTag } from "../ui/Tags";
 import type { EventItem } from "@/types/event";
+import { eventApplies, usableEvent } from "@/lib/eventScope";
 
 interface Props {
   idx: ShowIndex; date: string; sel: Set<string>; only: boolean; events?: EventItem[];
@@ -18,7 +19,7 @@ export default function DayPanel({ idx, date, sel, only, events = [], onOpen, on
   const filtering = sel.size > 0;
   const list = visibleOn(idx, date, sel, only);
   const total = (idx.byDate.get(date) ?? []).length;
-  const evs = events.filter((e) => !!e.startsOn && e.startsOn <= date && date <= (e.endsOn || e.startsOn));
+  const evs = events.filter((e) => usableEvent(e) && eventApplies(e, date)); // 이날 어느 회차에든 적용되는 이벤트
   const hits = filtering ? list.filter((s) => matches(idx, s, sel)).length : 0;
 
   return (
@@ -53,6 +54,10 @@ export default function DayPanel({ idx, date, sel, only, events = [], onOpen, on
                       <span className="text-lg font-bold tabular-nums">{s.time}</span>
                       {s.curtain && <CurtainTag />}
                       {ok && <span className="rounded-full bg-brand px-2 py-0.5 text-xs font-medium text-onbrand">선택 조건 일치</span>}
+                      {/* 이 회차에 실제로 적용되는 이벤트만 배지로(없으면 아무것도 안 나와요). 여러 개면 모두 보여요. */}
+                      {events.filter((e) => usableEvent(e) && eventApplies(e, date, s.time)).map((e) => (
+                        <span key={e.id} data-event-badge className="max-w-full break-words rounded bg-hit px-2 py-0.5 text-xs font-medium text-brand">{e.title}</span>
+                      ))}
                     </span>
                     <span className="grid grid-cols-1 gap-x-4 gap-y-0.5 text-sm min-[480px]:grid-cols-2 lg:grid-cols-1">
                       {idx.roles.map((r) => {

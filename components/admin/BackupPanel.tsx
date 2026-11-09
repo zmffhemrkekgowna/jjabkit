@@ -53,7 +53,7 @@ export default function BackupPanel({ shows, events = [] }: { shows: Show[]; eve
       const data = {
         ...buildBackup(shows),
         // 이 앱의 불러오기는 shows만 읽어요. 이벤트는 사람이 다시 입력할 수 있게 참고용으로 함께 담아요.
-        events: events.map((e) => ({ id: e.id, show: titleOf.get(e.showId) ?? "", title: e.title, startsOn: e.startsOn, endsOn: e.endsOn, linkUrl: e.linkUrl, color: e.color })),
+        events: events.map((e) => ({ id: e.id, show: titleOf.get(e.showId) ?? "", title: e.title, startsOn: e.startsOn, endsOn: e.endsOn, linkUrl: e.linkUrl, color: e.color, scope: e.scope, sessionKeys: e.sessionKeys })),
       };
       const text = JSON.stringify(data, null, 2);
       const back = parseBackup(text);

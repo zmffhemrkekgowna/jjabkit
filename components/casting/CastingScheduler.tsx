@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { addDays, firstSession, fmtDate, fromKey, lastSession, matches, nextSession, weekStart, type ShowIndex } from "@/lib/casting";
 import { todayKST } from "@/lib/period";
@@ -13,6 +13,7 @@ import DayPanel from "./DayPanel";
 import ShareBar from "../ShareBar";
 import { castingSpec } from "@/lib/calendarImage";
 import type { EventItem } from "@/types/event";
+import { displayEvents } from "@/lib/eventScope";
 
 interface Props {
   showTitle: string;
@@ -30,6 +31,8 @@ export default function CastingScheduler({ showTitle, idx, sel, only, setOnly, t
   const [selDate, setSelDate] = useState(""); // 월간 달력에서 고른 날짜(그날의 회차를 달력 옆·아래에 크게 보여줘요)
   // 오늘(한국 시간)은 서버와 브라우저가 달라 렌더 중에 계산하면 어긋날 수 있어서 마운트 후에 정해지고(첫 값 ""), 자정이 지나면 바뀌어요.
   const today = useTodayKST("");
+  // 달력 막대: 전체 회차는 첫~마지막 회차 날짜, 특정 회차는 고른 날짜(이어진 날짜끼리 한 막대), 기간은 그대로. 날짜별 칩·회차별 배지는 원래 이벤트(events)로 판단해요.
+  const barEvents = useMemo(() => displayEvents(events, [...idx.byDate.keys()]), [events, idx]);
 
   useEffect(() => {
     const t = fromKey(todayKST());
@@ -105,7 +108,7 @@ export default function CastingScheduler({ showTitle, idx, sel, only, setOnly, t
 
       {view === "month" ? (
         <div className="space-y-3 lg:grid lg:grid-cols-[minmax(0,1fr)_19rem] lg:items-start lg:gap-4 lg:space-y-0">
-          <MonthView color={color} idx={idx} cursor={cursor} sel={sel} only={only} today={today} events={events} onOpen={(d, sid) => { setSelDate(d); onOpen(d, sid); }} onOpenEvent={onOpenEvent} selected={selDate} onSelectDate={setSelDate} />
+          <MonthView color={color} idx={idx} cursor={cursor} sel={sel} only={only} today={today} events={barEvents} onOpen={(d, sid) => { setSelDate(d); onOpen(d, sid); }} onOpenEvent={onOpenEvent} selected={selDate} onSelectDate={setSelDate} />
           <div className="lg:sticky lg:top-24">
             {selDate
               ? <DayPanel idx={idx} date={selDate} sel={sel} only={only} events={events} onOpen={onOpen} onOpenEvent={onOpenEvent} />

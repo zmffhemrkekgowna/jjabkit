@@ -11,7 +11,8 @@ import { fmtDate, fromKey } from "@/lib/casting";
 import { useTodayKST } from "@/lib/useToday";
 import { useMySched } from "@/lib/mySched";
 import { useFavorites } from "@/lib/favorites";
-import { NO_CAST, castNames, eventsOnDate, groupByDate, groupByTime, shiftDate, validDate } from "@/lib/today";
+import { eventsForSession } from "@/lib/eventScope";
+import { NO_CAST, castNames, groupByDate, groupByTime, shiftDate, validDate } from "@/lib/today";
 import { readableText } from "@/lib/color";
 import { showColor } from "@/lib/mySchedule";
 import UserDataSync from "./UserDataSync";
@@ -71,7 +72,7 @@ export default function TodayView({ shows, events = [], serverToday }: { shows: 
                 <p className="mb-2 flex items-baseline gap-2 text-xl font-medium tabular-nums">{time}<span className="text-xs font-normal text-mute">{band(time)}</span></p>
                 <ul className="border border-line bg-card">
                   {rows.map(({ show, session: s }) => {
-                    const evs = eventsOnDate(events, show.id, date); // 이 공연·이 날짜에 적용되는 이벤트(관리자가 등록한 것)
+                    const evs = eventsForSession(events, show.id, date, s.time); // 이 공연의 이 회차(날짜+시간)에 실제로 적용되는 이벤트만(여러 개면 모두)
                     const names = castNames(show, s);
                     const bg = showColor(show);
                     const isFavShow = fav.ready && fav.shows.has(show.id);

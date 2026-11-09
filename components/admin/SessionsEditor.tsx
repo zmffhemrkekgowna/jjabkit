@@ -14,6 +14,7 @@ import { weekBars } from "@/components/casting/MonthView";
 import SlotCard from "@/components/casting/SlotCard";
 import { showColor } from "@/lib/mySchedule";
 import { isHex6, readableOn } from "@/lib/color";
+import { displayEvents } from "@/lib/eventScope";
 import { planRepeat } from "@/lib/repeatSessions";
 import { Fld, Sec, btn, friendly, ghost, iconBtn, inp, showToast, undoAction, type Notify, type Run } from "./shared";
 
@@ -168,6 +169,7 @@ function SessionsCalendar({ show, events, cursor, sel, onSel, onMonth }: { show:
   const by = new Map<string, Session[]>();
   for (const x of [...show.sessions].sort((a, b) => a.time.localeCompare(b.time))) by.set(x.date, [...(by.get(x.date) ?? []), x]);
   const nameOf = (r: Role, id: string | undefined) => r.actors.find((a) => a.id === id)?.n ?? "미정";
+  const barEvents = displayEvents(events, show.sessions.map((x) => x.date)); // 회차별 이벤트는 고른 날짜에만 막대가 그려져요
   const inMonthCount = show.sessions.filter((x) => x.date.slice(0, 7) === toKey(first).slice(0, 7)).length;
 
   return (
@@ -183,7 +185,7 @@ function SessionsCalendar({ show, events, cursor, sel, onSel, onMonth }: { show:
           {Array.from({ length: days.length / 7 }, (_, w) => days.slice(w * 7, w * 7 + 7)).map((week) => {
             const keys = week.map(toKey);
             const inMonth = week.map((d) => d.getMonth() === cursor.getMonth());
-            const { bars, lanes } = weekBars(events, keys, inMonth);
+            const { bars, lanes } = weekBars(barEvents, keys, inMonth);
             return (
               <div key={keys[0]} role="row" className="relative">
                 <div className="grid grid-cols-7 gap-px bg-line">

@@ -45,6 +45,7 @@ export function friendly(e: unknown): string {
   if (/row-level security|permission denied/i.test(m)) return "권한이 없어요. 관리자 계정으로 로그인했는지 확인해 주세요.";
   if (/relation .*(events|popups).* does not exist|could not find the table .*(events|popups)/i.test(m)) return "DB에 0004_events_popups.sql 이 아직 적용되지 않았어요. DEPLOY.md를 확인해 주세요.";
   if (/schedule_color|shows_schedule_color_check/i.test(m)) return "DB에 0009_show_color.sql 이 아직 적용되지 않았어요. 스케줄 색을 저장하려면 DEPLOY.md의 순서대로 SQL을 실행해 주세요. (다른 공연 정보는 그대로 저장돼요)";
+  if (/events_scope_check|events_session_keys_check|session_keys|column .*scope/i.test(m)) return "DB에 0011_event_scope.sql 이 아직 적용되지 않았어요. 전체 회차·특정 회차 이벤트를 저장하려면 Supabase SQL Editor에서 실행해 주세요. (기존 이벤트는 그대로예요)";
   if (/column .*color.*|could not find the .color. column/i.test(m)) return "DB에 0006_event_color.sql 이 아직 적용되지 않았어요. DEPLOY.md를 확인해 주세요.";
   if (/relation .*site_pages.* does not exist|could not find the table .*site_pages/i.test(m)) return "DB에 0005_site_pages.sql 이 아직 적용되지 않았어요. DEPLOY.md를 확인해 주세요.";
   if (/site_pages_slug_check|violates check constraint .*site_pages/i.test(m)) return "DB에 0007_site_pages_custom.sql 이 아직 적용되지 않았어요. 새 안내 페이지를 만들려면 DEPLOY.md의 순서대로 SQL을 실행해 주세요.";

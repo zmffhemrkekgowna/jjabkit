@@ -3,7 +3,8 @@
 import { useRef } from "react";
 import { CalendarDays, ExternalLink, X } from "lucide-react";
 import type { EventItem } from "@/types/event";
-import { isHttpUrl, periodText } from "@/lib/period";
+import { isHttpUrl } from "@/lib/period";
+import { scopeText, sessionKeysText } from "@/lib/eventScope";
 import { isHex6 } from "@/lib/color";
 import { useDialogFocus } from "@/lib/useDialogFocus";
 
@@ -22,7 +23,12 @@ export default function EventSheet({ event, onClose }: { event: EventItem; onClo
           <button ref={closeRef} onClick={onClose} aria-label="닫기" className="inline-flex h-11 w-11 items-center justify-center rounded-lg text-mute hover:text-ink"><X size={18} aria-hidden /></button>
         </div>
         <div className="space-y-3 px-5 pt-2 text-sm">
-          <p className="inline-flex items-center gap-1 text-xs text-mute"><CalendarDays size={12} aria-hidden />{periodText(event)}</p>
+          <p className="inline-flex items-center gap-1 text-xs text-mute"><CalendarDays size={12} aria-hidden />{scopeText(event)}</p>
+          {event.scope === "sessions" && (
+            <ul aria-label="이벤트가 적용되는 회차" className="space-y-0.5 text-xs text-mute">
+              {sessionKeysText(event.sessionKeys).map((t) => <li key={t}>{t}</li>)}
+            </ul>
+          )}
           {isHttpUrl(event.linkUrl)
             ? <div><a href={event.linkUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 rounded-lg bg-brand px-3 py-2 text-sm font-medium text-onbrand">공지 보기<ExternalLink size={14} aria-hidden /></a></div>
             : <p className="text-mute">연결된 공지가 없어요.</p>}
