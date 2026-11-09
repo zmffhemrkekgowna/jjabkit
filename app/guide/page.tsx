@@ -17,12 +17,13 @@ function previewOf(body: string): string {
 export default async function GuidePage() {
   const db = await createClient().catch(() => null);
   const { builtin, custom } = await fetchSitePagesSafe(db);
-  const ad = { href: "/guide/popup-ads", title: "팝업 광고 문의", body: "짭킷 홈 화면 팝업 광고의 이미지 규격과 노출 방식, 게재 문의 방법을 안내해요." };
   const page = (s: "about" | "privacy" | "contact") => ({ href: `/${s}`, title: builtin[s].title, body: builtin[s].body });
-  // 순서: (관리자가 추가한 안내) → 소개 → 개인정보처리방침 → 팝업 광고 문의 → 문의
+  const asItem = (p: { slug: string; title: string; body: string }) => ({ href: `/guide/${p.slug}`, title: p.title, body: p.body });
+  // 팝업 광고 문의(주소 popup-ads)는 관리자 화면에서 만든·고친 일반 안내 페이지예요. 순서만 소개 → 개인정보처리방침 → 팝업 광고 문의 → 문의로 맞춰요.
+  const ad = custom.filter((p) => p.slug === "popup-ads").map(asItem);
   const items = [
-    ...custom.map((p) => ({ href: `/guide/${p.slug}`, title: p.title, body: p.body })),
-    page("about"), page("privacy"), ad, page("contact"),
+    ...custom.filter((p) => p.slug !== "popup-ads").map(asItem),
+    page("about"), page("privacy"), ...ad, page("contact"),
   ];
   return (
     <div className="mx-auto max-w-2xl px-4 pb-10 pt-5">
