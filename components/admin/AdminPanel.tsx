@@ -14,6 +14,7 @@ import ShowsAdmin from "./ShowsAdmin";
 import PopupsAdmin from "./PopupsAdmin";
 import NoticesAdmin, { type NoticeDraft } from "./NoticesAdmin";
 import BackupPanel from "./BackupPanel";
+import ImportAdmin from "./ImportAdmin";
 import StatsAdmin from "./StatsAdmin";
 import PagesAdmin from "./PagesAdmin";
 import ToastHost from "./ToastHost";
@@ -21,7 +22,7 @@ import type { CustomPage, PageSlug, SitePage } from "@/types/page";
 import type { Tab } from "@/lib/adminTabs";
 
 export type { Tab };
-const TABS: [Tab, string][] = [["shows", "공연 관리"], ["popups", "팝업 광고"], ["notices", "소식·공지"], ["pages", "안내 페이지"], ["backup", "백업·복구"], ["stats", "방문자 통계"]];
+const TABS: [Tab, string][] = [["shows", "공연 관리"], ["import", "엑셀 업로드"], ["popups", "팝업 광고"], ["notices", "소식·공지"], ["pages", "안내 페이지"], ["backup", "백업·복구"], ["stats", "방문자 통계"]];
 
 export default function AdminPanel({ shows, notices, events, popups, pages, customPages = [], initialTab = "shows" }: { shows: Show[]; notices: Notice[]; events: EventItem[]; popups: Popup[]; pages: Record<PageSlug, SitePage & { custom: boolean }>; customPages?: CustomPage[]; initialTab?: Tab }) {
   const router = useRouter();
@@ -40,7 +41,7 @@ export default function AdminPanel({ shows, notices, events, popups, pages, cust
   };
 
   return (
-    <div className="mx-auto max-w-3xl space-y-4 px-4 pb-12 pt-4">
+    <div className={`mx-auto ${tab === "import" ? "max-w-6xl" : "max-w-3xl"} space-y-4 px-4 pb-12 pt-4`}>
       <div className="flex items-center justify-between gap-3">
         <h1 className="font-serif text-xl font-bold">관리자</h1>
         <button onClick={logout} className={ghost}><LogOut size={14} aria-hidden />로그아웃</button>
@@ -55,6 +56,7 @@ export default function AdminPanel({ shows, notices, events, popups, pages, cust
       </nav>
       {dirtyLabels && <p data-testid="dirty-banner" role="note" className="rounded-lg border border-brand bg-hit px-3 py-2 text-xs font-medium text-brand">저장하지 않은 입력이 있어요: {dirtyLabels}. 버튼을 눌러 저장하기 전에는 반영되지 않아요.</p>}
       {tab === "shows" && <ShowsAdmin shows={shows} events={events} onWriteNotice={writeNotice} />}
+      {tab === "import" && <ImportAdmin shows={shows} />}
       {tab === "popups" && <PopupsAdmin popups={popups} />}
       {tab === "notices" && <NoticesAdmin notices={notices} shows={shows} draft={draft} />}
       {tab === "pages" && <PagesAdmin pages={pages} customPages={customPages} />}
