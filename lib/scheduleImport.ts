@@ -18,6 +18,7 @@ export const FIELD_LABEL: Record<RowField, string> = {
   title: "공연명", venue: "공연장", start: "공연 시작일", end: "공연 종료일", date: "공연일", time: "공연 시간",
   actor: "배우명", link: "공지 링크", role: "배역명", genre: "장르",
 };
+export const ORDER: RowField[] = ["title", "venue", "start", "end", "date", "time", "actor", "link", "role", "genre"]; // 양식의 열 순서(A~J)
 const REQUIRED: RowField[] = ["title", "venue", "start", "end", "date", "time", "actor"];
 
 const ALIASES: Record<RowField, string[]> = {
@@ -37,18 +38,23 @@ const HEADER_LOOKUP = new Map<string, RowField>();
 for (const f of Object.keys(ALIASES) as RowField[]) for (const a of ALIASES[f]) HEADER_LOOKUP.set(normHeader(a), f);
 
 /** 시트 행들에서 머리글을 찾고 데이터 행으로 바꿔요. 못 읽으면 FileReadError(사유 포함). */
-export function parseSheetRows(sheet: SheetRow[]): ImportRow[] {
+export function parseSheetRows(sheet: SheetRow[], opts: { allowHeaderless?: boolean } = {}): ImportRow[] {
   let hi = -1; let map = new Map<RowField, number>();
   for (let i = 0; i < Math.min(sheet.length, 10); i++) {
     const m = new Map<RowField, number>();
     sheet[i].cells.forEach((c, ci) => { const f = HEADER_LOOKUP.get(normHeader(c ?? "")); if (f && !m.has(f)) m.set(f, ci); });
     if (m.size >= 3) { hi = i; map = m; break; }
   }
-  if (hi < 0) throw new FileReadError("머리글(공연명, 공연장, 공연일 …)을 찾지 못했어요. 업로드 양식을 내려받아 같은 머리글로 작성해 주세요.");
+  if (hi < 0 && opts.allowHeaderless) {
+    // 머리글 없이 데이터 행만 복사한 경우: 양식의 열 순서(A~J)를 그대로 따라요.
+    if (!sheet.some((r) => r.cells.length >= 7)) throw new FileReadError("열이 7개 미만이에요. 엑셀 양식의 공연명~배우명(A~G열)까지 포함해 복사해 주세요. 머리글 없이 붙여넣을 때는 양식과 같은 열 순서여야 해요.");
+    map = new Map(ORDER.map((f, i) => [f, i] as [RowField, number])); hi = -1;
+  }
+  else if (hi < 0) throw new FileReadError("머리글(공연명, 공연장, 공연일 …)을 찾지 못했어요. 업로드 양식을 내려받아 같은 머리글로 작성해 주세요.");
   const missing = REQUIRED.filter((f) => !map.has(f));
   if (missing.length) throw new FileReadError(`필수 열이 없어요: ${missing.map((f) => FIELD_LABEL[f]).join(", ")}. 업로드 양식의 머리글을 그대로 사용해 주세요.`);
   const data = sheet.slice(hi + 1);
-  if (data.length === 0) throw new FileReadError("머리글 아래에 입력된 행이 없어요.");
+  if (data.length === 0) throw new FileReadError("머리글 아래에 입력된 행이 없어요. 머리글 아래의 데이터 행까지 함께 복사해 주세요.");
   if (data.length > MAX_IMPORT_ROWS) throw new FileReadError(`행이 너무 많아요(${data.length}행). 한 번에 ${MAX_IMPORT_ROWS}행까지 올릴 수 있어요. 파일을 나눠 주세요.`);
   const get = (cells: string[], f: RowField) => { const i = map.get(f); return i === undefined ? "" : (cells[i] ?? "").trim(); };
   return data.map((r, i) => ({
@@ -57,6 +63,29 @@ export function parseSheetRows(sheet: SheetRow[]): ImportRow[] {
     date: get(r.cells, "date"), time: get(r.cells, "time"), actor: get(r.cells, "actor"), link: get(r.cells, "link"),
     role: get(r.cells, "role"), genre: get(r.cells, "genre"),
   }));
+}
+
+/**
+ * 엑셀에서 복사한 글(탭으로 열, 줄바꿈으로 행 구분)을 행·열로 나눠요. 셀 안에 줄바꿈이나 큰따옴표가 있으면 엑셀이 "…"로 감싸서 복사하는데 그것도 풀어줘요.
+ * 빈 칸은 그대로 빈 칸으로 남겨 열 위치가 밀리지 않아요. n은 붙여넣은 글의 몇 번째 줄인지(머리글 포함)예요.
+ */
+export function parsePasted(text: string): SheetRow[] {
+  const src = text.replace(/^\uFEFF/, "").replace(/\r\n?/g, "\n");
+  const rows: SheetRow[] = [];
+  let cells: string[] = [], cur = "", q = false, fieldStart = true, line = 1, startLine = 1;
+  const end = () => { cells.push(cur); if (cells.some((x) => x.trim() !== "")) rows.push({ n: startLine, cells }); cells = []; cur = ""; fieldStart = true; };
+  for (let i = 0; i < src.length; i++) {
+    const ch = src[i];
+    if (q) { if (ch === '"') { if (src[i + 1] === '"') { cur += '"'; i++; } else q = false; } else { cur += ch; if (ch === "\n") line++; } continue; }
+    if (ch === '"' && fieldStart) { q = true; fieldStart = false; continue; }
+    if (ch === "\t") { cells.push(cur); cur = ""; fieldStart = true; continue; }
+    if (ch === "\n") { end(); line++; startLine = line; continue; }
+    cur += ch; fieldStart = false;
+  }
+  if (cur || cells.length) end();
+  if (rows.length > MAX_IMPORT_ROWS + 10) throw new FileReadError(`행이 너무 많아요(${rows.length}행). 한 번에 ${MAX_IMPORT_ROWS}행까지 붙여넣을 수 있어요. 나눠서 붙여넣어 주세요.`);
+  if (rows.length && rows.every((r) => r.cells.length < 2)) throw new FileReadError("열이 구분되지 않았어요. 엑셀에서 셀을 선택해 복사(Ctrl+C)한 내용을 붙여넣어 주세요. 메모장·한글 등에서 복사한 글은 열을 알아볼 수 없어요.");
+  return rows;
 }
 
 /* ---------- 값 정리 ---------- */
@@ -122,7 +151,7 @@ export interface ShowGroup {
 }
 export interface Analysis {
   rows: AnalyzedRow[]; groups: ShowGroup[];
-  counts: { total: number; errors: number; excluded: number; dups: number; warnRows: number; newShows: number; existingShows: number; newSessions: number; existingSessions: number; newRows: number; existingRows: number };
+  counts: { total: number; errors: number; excluded: number; dups: number; warnRows: number; newShows: number; existingShows: number; newSessions: number; existingSessions: number; newRows: number; existingRows: number; assignments: number };
 }
 export interface AnalyzeOptions { updateCast: boolean; choice: Record<string, ShowChoice>; excluded: Set<number> }
 
@@ -217,6 +246,9 @@ export function analyze(input: ImportRow[], shows: Show[], opt: AnalyzeOptions):
     const register = (r: AnalyzedRow, pairs: { role: string; actor: string }[]): boolean => {
       const u = used.get(sessKey(r)) ?? new Map<string, { actor: string; n: number }>(); used.set(sessKey(r), u);
       let ok = true;
+      // 한 행 안에서 같은 배역에 서로 다른 배우를 적은 경우(예: 배우명 '옥주현, 신영숙' / 배역명 '댄버스, 댄버스')도 같은 회차의 한 배역에는 1명만 가능해요
+      const inRowRole = new Map<string, string>();
+      for (const p of pairs) { const k = normKey(p.role); const prev = inRowRole.get(k); if (prev !== undefined && normKey(prev) !== normKey(p.actor)) { r.errors.push(`같은 행에서 '${p.role}' 배역에 배우가 2명('${prev}', '${p.actor}')이에요 — 한 회차의 한 배역에는 배우 1명만 가능해요. 회차(행)를 나눠 적어 주세요`); return false; } inRowRole.set(k, p.actor); }
       for (const p of pairs) { const c = u.get(normKey(p.role)); if (c && normKey(c.actor) !== normKey(p.actor)) { r.errors.push(`같은 회차의 '${p.role}' 배역에 이미 '${c.actor}'(${c.n}행)가 있어요 — 한 회차의 한 배역에는 배우 1명만 가능해요`); ok = false; } }
       if (!ok) return false;
       let allDup = true;
@@ -298,10 +330,10 @@ export function analyze(input: ImportRow[], shows: Show[], opt: AnalyzeOptions):
     if (g.validRows > 0) { if (g.mode === "new") newShows++; else existingShows++; }
     newSessions += g.newSessions; existingSessions += g.existingSessions;
   }
-  const c = { total: out.length, errors: 0, excluded: 0, dups: 0, warnRows: 0, newShows, existingShows, newSessions, existingSessions, newRows: 0, existingRows: 0 };
+  const c = { total: out.length, errors: 0, excluded: 0, dups: 0, warnRows: 0, newShows, existingShows, newSessions, existingSessions, newRows: 0, existingRows: 0, assignments: 0 };
   for (const r of out) {
     if (r.status === "error") c.errors++; else if (r.status === "excluded") c.excluded++; else if (r.status === "dup") c.dups++;
-    else if (r.status === "new") c.newRows++; else if (r.status === "existing") c.existingRows++;
+    else if (r.status === "new") { c.newRows++; c.assignments += r.cast.length; } else if (r.status === "existing") { c.existingRows++; if (opt.updateCast) c.assignments += r.cast.length; }
     if (r.status !== "error" && r.status !== "excluded" && r.warns.length) c.warnRows++;
   }
   return { rows: out, groups, counts: c };
