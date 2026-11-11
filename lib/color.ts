@@ -33,16 +33,3 @@ export const SHOW_COLORS: { name: string; hex: string }[] = [
   { name: "테라코타", hex: "#b8552f" }, { name: "올리브", hex: "#7b8a3a" }, { name: "플럼", hex: "#9c5589" },
   { name: "코코아", hex: "#8a6a4f" }, { name: "슬레이트", hex: "#6b7d8c" },
 ];
-
-/**
- * 이벤트 막대·표시 색. 같은 공연의 이벤트는 모두 그 공연의 색을 함께 써요(공연 색을 바꾸면 이벤트 색도 같이 바뀌어요).
- * 공연에 저장된 색이 아직 없으면(0015를 적용하기 전) 이벤트에 따로 저장된 색을 그대로 써요. 저장된 값은 건드리지 않고 보여줄 때만 바꿔요.
- */
-export function withShowColor<T extends { color: string }>(events: T[], show: { color?: string }): T[] {
-  const c = show.color ?? "";
-  return isHex6(c) ? events.map((e) => (e.color === c.toLowerCase() ? e : { ...e, color: c.toLowerCase() })) : events;
-}
-export function withShowColors<T extends { color: string; showId: string }>(events: T[], shows: { id: string; color?: string }[]): T[] {
-  const by = new Map(shows.map((s) => [s.id, s.color ?? ""]));
-  return events.map((e) => { const c = by.get(e.showId) ?? ""; return isHex6(c) && e.color !== c.toLowerCase() ? { ...e, color: c.toLowerCase() } : e; });
-}

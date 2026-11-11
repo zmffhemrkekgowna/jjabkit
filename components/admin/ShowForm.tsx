@@ -38,7 +38,7 @@ function ScheduleColor({ show, upd }: { show: Show; upd: (patch: { color: string
   const preview = isHex6(draft) ? draft : eff;
   return (
     <div className="mt-3 rounded-xl bg-bg p-3" role="group" aria-label="스케줄 색상">
-      <p className="text-sm font-medium">스케줄 색상 <span className="text-xs font-normal text-mute">달력의 회차 카드와 이 공연의 이벤트에 함께 쓰여요</span></p>
+      <p className="text-sm font-medium">스케줄 색상 <span className="text-xs font-normal text-mute">달력의 회차 카드에 쓰여요. 이벤트 색은 이벤트마다 따로 정해요</span></p>
       <div className="mt-2 flex flex-wrap items-center gap-2">
         {SHOW_COLORS.map((c) => (
           <button key={c.hex} onClick={() => commit(c.hex)} aria-label={`스케줄 색 ${c.name}`} aria-pressed={saved.toLowerCase() === c.hex} title={c.name}

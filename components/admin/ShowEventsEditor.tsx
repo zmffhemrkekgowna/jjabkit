@@ -6,7 +6,7 @@ import type { Show } from "@/types/show";
 import type { EventItem } from "@/types/event";
 import { createEvent, deleteEvent, restoreEvents, updateEvent, type EventInput } from "@/lib/db/events";
 import { useDirty } from "./dirty";
-import { isHex6, readableOn } from "@/lib/color";
+import { EVENT_COLORS, isHex6, readableOn } from "@/lib/color";
 import { PHASE_LABEL, isHttpUrl, isRealDate, linkProblem, phaseOf } from "@/lib/period";
 import { derivedPeriod, keyDate, keyTime, scopeText, sessionKey, SCOPE_LABEL } from "@/lib/eventScope";
 import { fmtDate, fromKey } from "@/lib/casting";
@@ -104,7 +104,7 @@ export default function ShowEventsEditor({ show, events, run }: { show: Show; ev
                         <span className={`rounded-full border px-2 py-0.5 font-medium ${ph === "active" ? "border-brand text-brand" : "border-line"}`}>{PHASE_LABEL[ph]}</span>
                         <span className="rounded-full border border-line px-2 py-0.5" data-scope-badge>{SCOPE_LABEL[e.scope]}</span>
                         <span className="tabular-nums">{scopeText(e)}</span>
-                        {isHex6(show.color || e.color) && <span aria-label={`막대 색 ${show.color || e.color}`} className="inline-block h-3 w-3 rounded-full border border-line" style={{ background: show.color || e.color }} />}
+                        {isHex6(e.color) && <span aria-label={`막대 색 ${e.color}`} className="inline-block h-3 w-3 rounded-full border border-line" style={{ background: e.color }} />}
                       </div>
                       <div className="mt-1 truncate text-sm font-bold">{e.title}</div>
                       {isHttpUrl(e.linkUrl) && <a href={e.linkUrl} target="_blank" rel="noopener noreferrer" className="mt-0.5 inline-flex max-w-full items-center gap-1 truncate text-xs text-brand underline"><ExternalLink size={11} aria-hidden />공지 링크</a>}
@@ -200,13 +200,22 @@ export default function ShowEventsEditor({ show, events, run }: { show: Show; ev
                 {shown("linkUrl") && <p role="alert" className="mt-1 text-xs text-red-600">{shown("linkUrl")}</p>}
               </Fld>
               <div className="sm:col-span-2">
-                <p className="text-xs font-medium text-mute">달력 막대 색</p>
-                {/* 이벤트 색은 공연 색을 그대로 따라요. 공연 색을 바꾸면 이 공연의 모든 이벤트 색이 함께 바뀌어요. */}
-                <div className="mt-1.5 flex h-6 items-center overflow-hidden rounded-md px-2 text-xs font-bold" data-preview
-                  style={isHex6(show.color) ? { background: show.color, color: readableOn(show.color) } : undefined}>
-                  <span className={`truncate ${isHex6(show.color) ? "" : "rounded-md bg-ink px-2 text-bg"}`}>{t || "이벤트 제목"}</span>
+                <p className="text-xs font-medium text-mute">달력 막대 색 (선택)</p>
+                <div className="mt-1.5 flex flex-wrap items-center gap-2">
+                  <button type="button" onClick={() => set("color", "")} aria-pressed={!form.color} aria-label="기본색"
+                    className={`rounded-full border px-3 py-1 text-xs ${!form.color ? "border-brand bg-hit font-bold text-brand" : "border-line text-mute"}`}>기본</button>
+                  {EVENT_COLORS.map((c) => (
+                    <button key={c.hex} type="button" onClick={() => set("color", c.hex)} aria-label={`막대 색 ${c.name}`} aria-pressed={form.color.toLowerCase() === c.hex}
+                      style={{ background: c.hex }} className={`h-7 w-7 rounded-full border-2 ${form.color.toLowerCase() === c.hex ? "border-ink ring-2 ring-[var(--brand)]" : "border-line"}`} />
+                  ))}
+                  <label className="inline-flex items-center gap-1 text-xs text-mute">직접 고르기
+                    <input type="color" aria-label="막대 색 직접 고르기" value={isHex6(form.color) ? form.color : "#2563eb"} onChange={(e) => set("color", e.target.value)} className="h-7 w-9 cursor-pointer rounded border border-line bg-card p-0.5" />
+                  </label>
                 </div>
-                <p className="mt-1 text-xs text-mute">이벤트 색은 이 공연의 스케줄 색을 따라가요. 색을 바꾸려면 위 ‘공연 기본 정보’의 스케줄 색상을 바꿔 주세요.</p>
+                <div className="mt-2 flex h-6 items-center overflow-hidden rounded-md px-2 text-xs font-bold" data-preview
+                  style={isHex6(form.color) ? { background: form.color, color: readableOn(form.color) } : undefined}>
+                  <span className={`truncate ${isHex6(form.color) ? "" : "rounded-md bg-ink px-2 text-bg"}`}>{t || "이벤트 제목"}</span>
+                </div>
               </div>
             </div>
             <div className="mt-3 flex flex-wrap items-center gap-3">
