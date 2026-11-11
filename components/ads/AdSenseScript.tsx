@@ -15,7 +15,7 @@ export default function AdSenseScript() {
     <Script
       id="adsense-loader"
       async
-      strategy="beforeInteractive
+      strategy="beforeInteractive"
       crossOrigin="anonymous"
       src={`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${ADSENSE_CLIENT}`}
     />
