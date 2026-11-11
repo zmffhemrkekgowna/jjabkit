@@ -81,12 +81,12 @@ export default function CastFilter({ idx, sel, toggle, selectMany, reset, only, 
                         const on = sel.has(a.id);
                         const name = actorOf(idx, a.id).n;
                         return (
-                          <span key={a.id} className={`relative grid min-h-10 min-w-0 grid-cols-[18px_minmax(0,1fr)_18px] items-stretch rounded-full border transition-colors sm:min-h-9 sm:grid-cols-[2rem_minmax(0,1fr)_2rem] ${on ? "border-brand bg-brand font-bold text-onbrand" : "border-line bg-card hover:border-brand"}`}>
-                            {/* 이름 버튼은 칸 전체를 덮고 좌우 여백을 같게 둬서, 하트가 있어도 이름이 정중앙에 와요. */}
-                            <button aria-pressed={on} onClick={() => toggle(a.id)} className="col-span-3 col-start-1 row-start-1 flex min-h-10 min-w-0 items-center justify-center break-keep rounded-full px-[18px] py-1 text-center text-[13px] leading-tight sm:min-h-9 sm:px-8 sm:text-sm">
+                          <span key={a.id} className={`relative grid min-h-10 min-w-0 grid-cols-[minmax(0,1fr)_22px] items-stretch rounded-full border transition-colors sm:min-h-9 sm:grid-cols-[minmax(0,1fr)_2rem] ${on ? "border-brand bg-brand font-bold text-onbrand" : "border-line bg-card hover:border-brand"}`}>
+                            {/* 이름 영역(왼쪽)과 하트 영역(오른쪽)을 나누고, 이름은 하트를 뺀 나머지 영역의 가운데에 둬요. */}
+                            <button aria-pressed={on} onClick={() => toggle(a.id)} className="col-start-1 row-start-1 flex min-h-10 min-w-0 items-center justify-center break-keep rounded-full px-1 py-1 text-center text-[13px] leading-tight sm:min-h-9 sm:px-2 sm:text-sm">
                               {on && <Check size={12} strokeWidth={3} aria-hidden className="absolute left-3 hidden sm:block" />}<span className="min-w-0 [overflow-wrap:anywhere]">{name}</span>
                             </button>
-                            <HeartButton on={fav.actors.has(name)} onClick={() => fav.toggleActor(name)} label={name} size={13} inverted={on} className="relative z-10 col-start-3 row-start-1 h-full w-full !p-0" />
+                            <HeartButton on={fav.actors.has(name)} onClick={() => fav.toggleActor(name)} label={name} size={13} inverted={on} className="col-start-2 row-start-1 h-full w-full !p-0" />
                           </span>
                         );
                       })}
