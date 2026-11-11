@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, Bell, ChevronRight, Eye, Plus, Search, Trash2 } from "lucide-react";
+import { ArrowLeft, Bell, ChevronRight, ClipboardPaste, Eye, Plus, Search, Trash2 } from "lucide-react";
 import type { Show } from "@/types/show";
 import { statusOf } from "@/lib/status";
 import { useTodayKST } from "@/lib/useToday";
@@ -19,7 +19,7 @@ import ShowEventsEditor from "./ShowEventsEditor";
 type EvFilter = "all" | "with" | "without";
 const FILTERS: [EvFilter, string][] = [["all", "전체"], ["with", "이벤트 있음"], ["without", "이벤트 없음"]];
 
-export default function ShowsAdmin({ shows, events, onWriteNotice }: { shows: Show[]; events: EventItem[]; onWriteNotice: (show: Show) => void }) {
+export default function ShowsAdmin({ shows, events, onWriteNotice, onOpenImport }: { shows: Show[]; events: EventItem[]; onWriteNotice: (show: Show) => void; onOpenImport?: () => void }) {
   // aid가 없으면 공연 목록, 있으면 그 공연의 상세 관리 화면이에요.
   const today = useTodayKST();
   const [aid, setAid] = useState<string | null>(null);
@@ -45,7 +45,10 @@ export default function ShowsAdmin({ shows, events, onWriteNotice }: { shows: Sh
       <div className="space-y-4">
         <div className="flex items-center justify-between gap-2">
           <h2 className="text-lg font-bold">공연 관리</h2>
-          <button onClick={addShow} className={btn}><Plus size={14} aria-hidden />새 공연</button>
+          <div className="flex flex-wrap items-center gap-2">
+            {onOpenImport && <button onClick={onOpenImport} className={ghost} data-testid="open-import"><ClipboardPaste size={14} aria-hidden />엑셀 붙여넣기</button>}
+            <button onClick={addShow} className={btn}><Plus size={14} aria-hidden />새 공연</button>
+          </div>
         </div>
         <p aria-live="polite" className="min-h-5 text-sm text-brand">{msg}</p>
         {shows.length === 0 ? (
