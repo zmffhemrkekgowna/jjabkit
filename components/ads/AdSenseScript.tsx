@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { ADSENSE_CLIENT, isValidClient } from "@/lib/ads";
 
 /**
- * 애드센스 스크립트(adsbygoogle.js)를 한 번만 불러와요.
+ * 애드센스 스크립트(adsbygoogle.js)를 한 번만 불러와요. beforeInteractive라서 서버가 보내는 HTML의 <head>에 바로 들어가요(애드센스가 사이트를 확인할 때 head에서 코드를 찾아요).
  * 관리자·로그인 화면에서는 불러오지 않아요. ID가 없거나 형식이 틀리면 아무것도 안 해요.
  */
 export default function AdSenseScript() {

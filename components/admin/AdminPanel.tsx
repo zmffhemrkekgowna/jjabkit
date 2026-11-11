@@ -56,7 +56,7 @@ export default function AdminPanel({ shows, notices, events, popups, pages, cust
       </nav>
       {dirtyLabels && <p data-testid="dirty-banner" role="note" className="rounded-lg border border-brand bg-hit px-3 py-2 text-xs font-medium text-brand">저장하지 않은 입력이 있어요: {dirtyLabels}. 버튼을 눌러 저장하기 전에는 반영되지 않아요.</p>}
       {tab === "shows" && <ShowsAdmin shows={shows} events={events} onWriteNotice={writeNotice} onOpenImport={() => goTab("import")} />}
-      {tab === "import" && <ImportAdmin shows={shows} />}
+      {tab === "import" && <ImportAdmin shows={shows} events={events} />}
       {tab === "popups" && <PopupsAdmin popups={popups} />}
       {tab === "notices" && <NoticesAdmin notices={notices} shows={shows} draft={draft} />}
       {tab === "pages" && <PagesAdmin pages={pages} customPages={customPages} />}

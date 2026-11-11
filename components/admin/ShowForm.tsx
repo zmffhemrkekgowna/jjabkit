@@ -38,7 +38,7 @@ function ScheduleColor({ show, upd }: { show: Show; upd: (patch: { color: string
   const preview = isHex6(draft) ? draft : eff;
   return (
     <div className="mt-3 rounded-xl bg-bg p-3" role="group" aria-label="스케줄 색상">
-      <p className="text-sm font-medium">스케줄 색상 <span className="text-xs font-normal text-mute">달력에서 이 공연의 회차 카드에 쓰여요</span></p>
+      <p className="text-sm font-medium">스케줄 색상 <span className="text-xs font-normal text-mute">달력의 회차 카드와 이 공연의 이벤트에 함께 쓰여요</span></p>
       <div className="mt-2 flex flex-wrap items-center gap-2">
         {SHOW_COLORS.map((c) => (
           <button key={c.hex} onClick={() => commit(c.hex)} aria-label={`스케줄 색 ${c.name}`} aria-pressed={saved.toLowerCase() === c.hex} title={c.name}
@@ -53,13 +53,13 @@ function ScheduleColor({ show, upd }: { show: Show; upd: (patch: { color: string
             onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }}
             className={`${inp} !w-28 font-mono ${bad ? "border-brand" : ""}`} />
         </label>
-        {saved && <button onClick={() => { setDraft(showColor({ grad: show.grad })); setText(""); upd({ color: "" }, "스케줄 색을 포스터 색으로 되돌렸어요."); }} className="text-xs text-mute underline">포스터 색으로 되돌리기</button>}
+        {saved && <button onClick={() => { setDraft(showColor({ grad: show.grad })); setText(""); upd({ color: "" }, "스케줄 색을 자동 배정 색으로 되돌렸어요."); }} className="text-xs text-mute underline" data-testid="color-auto">자동 배정 색으로 되돌리기</button>}
         <div className="w-28" aria-label="미리보기">
           <SlotCard as="span" color={preview} time="19:30" all={["홍길동", "김철수", "이영희"]} />
         </div>
       </div>
       {bad && <p role="alert" className="mt-1 text-xs font-medium text-brand">색 코드는 #ea580c 같은 6자리 HEX로 입력해 주세요.</p>}
-      <p className="mt-1 text-xs text-mute">{saved ? `선택한 색 ${saved}` : "아직 고르지 않았어요. 지금은 포스터 색이 쓰여요."} · 글자색은 배경에 맞춰 자동으로 정해져요({readableText(preview) === "#ffffff" ? "흰색" : "어두운색"}).</p>
+      <p className="mt-1 text-xs text-mute">{saved ? `저장된 색 ${saved}` : "아직 저장된 색이 없어요. 지금은 포스터 색이 쓰여요(DB 0015 적용 후에는 자동으로 배정돼요)."} · 글자색은 배경에 맞춰 자동으로 정해져요({readableText(preview) === "#ffffff" ? "흰색" : "어두운색"}).</p>
     </div>
   );
 }

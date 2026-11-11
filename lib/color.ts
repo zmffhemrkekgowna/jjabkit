@@ -23,9 +23,26 @@ export function readableText(hex: string): string {
   return 1.05 / (L + 0.05) >= (L + 0.05) / 0.05 ? "#ffffff" : "#000000";
 }
 
-/** 공연 스케줄 색 추천 9가지. */
+/**
+ * 공연 스케줄 색 팔레트 11가지. 버건디 디자인과 어울리는 차분한 색이고 형광색은 넣지 않았어요.
+ * 새 공연에는 이 중 가장 적게 쓰인 색이 자동으로 배정돼요(supabase/migrations/0015의 pick_show_color와 같은 순서·같은 값이에요).
+ */
 export const SHOW_COLORS: { name: string; hex: string }[] = [
-  { name: "노랑", hex: "#facc15" }, { name: "주황", hex: "#ea580c" }, { name: "빨강", hex: "#dc2626" },
-  { name: "분홍", hex: "#db2777" }, { name: "보라", hex: "#7c3aed" }, { name: "파랑", hex: "#2563eb" },
-  { name: "청록", hex: "#0d9488" }, { name: "초록", hex: "#16a34a" }, { name: "회색", hex: "#6b7280" },
+  { name: "로즈", hex: "#b4505f" }, { name: "스틸 블루", hex: "#4f78a8" }, { name: "세이지 그린", hex: "#4c8a6c" },
+  { name: "오커", hex: "#b98433" }, { name: "바이올렛", hex: "#7658a6" }, { name: "틸", hex: "#3a8c96" },
+  { name: "테라코타", hex: "#b8552f" }, { name: "올리브", hex: "#7b8a3a" }, { name: "플럼", hex: "#9c5589" },
+  { name: "코코아", hex: "#8a6a4f" }, { name: "슬레이트", hex: "#6b7d8c" },
 ];
+
+/**
+ * 이벤트 막대·표시 색. 같은 공연의 이벤트는 모두 그 공연의 색을 함께 써요(공연 색을 바꾸면 이벤트 색도 같이 바뀌어요).
+ * 공연에 저장된 색이 아직 없으면(0015를 적용하기 전) 이벤트에 따로 저장된 색을 그대로 써요. 저장된 값은 건드리지 않고 보여줄 때만 바꿔요.
+ */
+export function withShowColor<T extends { color: string }>(events: T[], show: { color?: string }): T[] {
+  const c = show.color ?? "";
+  return isHex6(c) ? events.map((e) => (e.color === c.toLowerCase() ? e : { ...e, color: c.toLowerCase() })) : events;
+}
+export function withShowColors<T extends { color: string; showId: string }>(events: T[], shows: { id: string; color?: string }[]): T[] {
+  const by = new Map(shows.map((s) => [s.id, s.color ?? ""]));
+  return events.map((e) => { const c = by.get(e.showId) ?? ""; return isHex6(c) && e.color !== c.toLowerCase() ? { ...e, color: c.toLowerCase() } : e; });
+}

@@ -68,24 +68,24 @@ export default function CastFilter({ idx, sel, toggle, selectMany, reset, only, 
               const folded = closedRoles.has(r.id);
               const nSel = r.actors.filter((a) => sel.has(a.id)).length;
               return (
-                <div key={r.id} className="grid grid-cols-[4.75rem_minmax(0,1fr)] items-start gap-x-2 rounded-xl sm:grid-cols-[6rem_minmax(0,1fr)]">
+                <div key={r.id} className="grid grid-cols-1 items-start gap-x-2 gap-y-0.5 rounded-xl sm:grid-cols-[6rem_minmax(0,1fr)] sm:gap-y-0">
                   <button onClick={() => toggleRole(r.id)} aria-expanded={!folded} aria-label={`${r.name} 배우 ${folded ? "펼치기" : "접기"}`}
-                    className="flex min-h-[40px] w-full items-center gap-1 text-left text-[13px] font-bold text-ink sm:min-h-[36px] sm:text-sm">
+                    className="flex min-h-[32px] w-full items-center gap-1 text-left text-[13px] font-bold text-ink sm:min-h-[36px] sm:text-sm">
                     <ChevronDown size={13} aria-hidden className={`shrink-0 text-mute transition-transform ${folded ? "-rotate-90" : ""}`} />
                     <span className="min-w-0 break-keep leading-tight">{r.name}</span>
                     {folded && <span className="shrink-0 text-[11px] font-normal text-mute">{nSel > 0 ? `${nSel}/` : ""}{r.actors.length}</span>}
                   </button>
                   {!folded && (
-                    <div className="flex flex-wrap gap-1.5">
+                    <div className="grid grid-cols-3 gap-1.5 sm:grid-cols-[repeat(auto-fill,minmax(9rem,10rem))]">
                       {actors.map((a) => {
                         const on = sel.has(a.id);
                         const name = actorOf(idx, a.id).n;
                         return (
-                          <span key={a.id} className={`inline-flex h-10 items-center rounded-full border transition-colors sm:h-9 ${on ? "border-brand bg-brand font-bold text-onbrand" : "border-line bg-card hover:border-brand"}`}>
-                            <button aria-pressed={on} onClick={() => toggle(a.id)} className="inline-flex h-full items-center gap-1 rounded-full pl-3 pr-1 text-sm">
-                              {on && <Check size={13} strokeWidth={3} aria-hidden />}{name}
+                          <span key={a.id} className={`flex min-h-10 min-w-0 items-center rounded-full border transition-colors sm:min-h-9 ${on ? "border-brand bg-brand font-bold text-onbrand" : "border-line bg-card hover:border-brand"}`}>
+                            <button aria-pressed={on} onClick={() => toggle(a.id)} className="inline-flex min-h-10 min-w-0 flex-1 items-center gap-0.5 break-keep rounded-full py-1 pl-2.5 pr-0.5 text-left text-[13px] leading-tight sm:min-h-9 sm:gap-1 sm:pl-3 sm:text-sm">
+                              {on && <Check size={12} strokeWidth={3} aria-hidden className="shrink-0" />}<span className="min-w-0 [overflow-wrap:anywhere]">{name}</span>
                             </button>
-                            <HeartButton on={fav.actors.has(name)} onClick={() => fav.toggleActor(name)} label={name} size={14} inverted={on} className="mr-0.5 !p-2.5" />
+                            <HeartButton on={fav.actors.has(name)} onClick={() => fav.toggleActor(name)} label={name} size={14} inverted={on} className="mr-0.5 shrink-0 !p-2.5" />
                           </span>
                         );
                       })}

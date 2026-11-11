@@ -104,7 +104,8 @@ function dateCellText(v: number, date1904: boolean): string {
 const colIndex = (ref: string): number => { let n = 0; for (const ch of ref) { const c = ch.charCodeAt(0); if (c >= 65 && c <= 90) n = n * 26 + (c - 64); else break; } return n - 1; };
 
 /* ---------- xlsx 읽기 ---------- */
-export async function readXlsx(buf: ArrayBuffer, preferSheet = "일정"): Promise<{ rows: SheetRow[]; sheet: string }> {
+/** strict: 이름이 같은 시트가 없으면 첫 시트로 대신하지 않고 빈 결과(sheet "")를 돌려줘요(이벤트 시트가 있는지 확인할 때). */
+export async function readXlsx(buf: ArrayBuffer, preferSheet = "일정", strict = false): Promise<{ rows: SheetRow[]; sheet: string }> {
   const files = await unzip(buf);
   const getText = async (name: string): Promise<string | null> => { const f = files.get(name); return f ? utf8.decode(await f()) : null; };
   const wbXml = await getText("xl/workbook.xml");
@@ -117,7 +118,9 @@ export async function readXlsx(buf: ArrayBuffer, preferSheet = "일정"): Promis
   const rels = new Map<string, string>();
   if (relsXml) for (const r of all(parseXml(relsXml), "Relationship")) { let t = r.getAttribute("Target") ?? ""; t = t.startsWith("/") ? t.slice(1) : "xl/" + t.replace(/^\.\//, ""); rels.set(r.getAttribute("Id") ?? "", t); }
   const visible = sheets.filter((s) => s.state !== "hidden" && s.state !== "veryHidden");
-  const pick = visible.find((s) => s.name === preferSheet) ?? visible[0] ?? sheets[0];
+  const named = visible.find((s) => s.name === preferSheet);
+  if (strict && !named) return { rows: [], sheet: "" };
+  const pick = named ?? visible[0] ?? sheets[0];
   const path = rels.get(pick.rid) ?? "xl/worksheets/sheet1.xml";
   const shXml = await getText(path);
   if (!shXml) throw new FileReadError(`'${pick.name}' 시트를 읽을 수 없어요.`);
@@ -244,10 +247,12 @@ function sheetXml(rows: string[][], widths: number[], opts: { freeze?: boolean; 
 }
 
 export const TEMPLATE_HEADERS = ["공연명", "공연장", "공연 시작일", "공연 종료일", "공연일", "공연 시간", "배우명", "공지 링크", "배역명", "장르"];
+export const EVENT_TEMPLATE_HEADERS = ["공연명", "이벤트명", "이벤트 시작일", "이벤트 종료일"];
 
-/** 업로드 양식(.xlsx)을 만들어요. '일정' 시트는 머리글만 있고, '작성 안내' 시트에 설명과 예시가 있어요. */
+/** 업로드 양식(.xlsx)을 만들어요. '일정'·'이벤트' 시트는 머리글만 있고, '작성 안내' 시트에 설명과 예시가 있어요. */
 export function buildTemplateXlsx(): Uint8Array {
   const guide: string[][] = [
+    ["[일정 시트]", "", "", ""],
     ["항목", "설명", "필수 여부", "입력 예시"],
     ["공연명", "등록할 공연의 정식 명칭. 이미 등록된 이름과 같으면 기존 공연에 회차만 추가돼요(띄어쓰기·대소문자는 무시).", "필수", "레베카"],
     ["공연장", "공연 장소", "필수", "샤롯데씨어터"],
@@ -259,25 +264,37 @@ export function buildTemplateXlsx(): Uint8Array {
     ["공지 링크", "예매처·공연 공지 URL(http:// 또는 https://로 시작). 같은 공연의 첫 행에만 적어도 돼요.", "선택", "https://example.com/notice"],
     ["배역명", "선택 칸. 적으면 그 배역에 배우가 들어가요. 배우가 여러 명이면 배우와 같은 순서·같은 개수로 쉼표로 구분하세요. 비워두면 이미 등록된 배우는 원래 배역으로, 처음 보는 배우는 '출연진 1, 2…' 배역으로 들어가요.", "선택", "댄버스 부인"],
     ["장르", "선택 칸. 뮤지컬 또는 연극. 비우면 신규 공연은 뮤지컬로 등록돼요.", "선택", "뮤지컬"],
-    ["", "", "", ""],
     ["작성 팁", "공연명은 모든 행에 적어 주세요. 공연장·공연 시작일·공연 종료일·공지 링크·장르는 같은 공연의 첫 행에만 적고 아래 행은 비워도 돼요(같은 공연명의 첫 값을 이어받아요). 한 줄에 회차 1개 + 배우 1명 이상. 같은 회차의 같은 배역에 서로 다른 배우를 넣으면 오류로 알려드려요.", "", ""],
-    ["", "", "", ""],
-    ["예시 행", "공연명 | 공연장 | 시작일 | 종료일 | 공연일 | 시간 | 배우명 | 공지 링크 | 배역명", "", ""],
+    ["일정 예시", "공연명 | 공연장 | 시작일 | 종료일 | 공연일 | 시간 | 배우명 | 공지 링크 | 배역명", "", ""],
     ["", "레베카 | 샤롯데씨어터 | 2026-11-01 | 2026-12-31 | 2026-11-11 | 14:00 | 옥주현 | https://example.com | 댄버스 부인", "", ""],
     ["", "레베카 | 샤롯데씨어터 | 2026-11-01 | 2026-12-31 | 2026-11-11 | 19:00 | 신영숙 | | 댄버스 부인", "", ""],
+    ["", "", "", ""],
+    ["[이벤트 시트]", "공연에 딸린 이벤트를 한 행에 하나씩 적어요. 이벤트만 따로 추가·등록할 수도 있어요(일정 시트는 비워 두어도 돼요).", "", ""],
+    ["항목", "설명", "필수 여부", "입력 예시"],
+    ["공연명", "이벤트가 속한 공연. 일정 시트에 적은 공연이거나, 이미 등록된 공연이어야 해요(띄어쓰기·대소문자는 무시). 없는 공연이면 오류로 알려드려요.", "필수", "레베카"],
+    ["이벤트명", "이벤트 이름", "필수", "관객 감사 이벤트"],
+    ["이벤트 시작일", "YYYY-MM-DD 형식으로 입력해 주세요.", "필수", "2026-11-15"],
+    ["이벤트 종료일", "YYYY-MM-DD 형식. 시작일보다 빠를 수 없어요. 하루짜리면 시작일과 같은 날짜를 적어 주세요.", "필수", "2026-11-20"],
+    ["이벤트 규칙", "같은 공연명으로 여러 행을 쓰면 그 공연에 이벤트가 여러 개 등록돼요. 이벤트 기간은 공연 기간과 별개이고, 이벤트끼리 기간이 겹쳐도 등록돼요. 이벤트명이 같아도 기간이 다르면 별개의 이벤트예요. 이벤트명과 기간이 모두 같은 이벤트가 이미 있으면 새로 만들지 않고 건너뛰어요. 이벤트 시트를 비워 두어도 기존 이벤트는 지우거나 바꾸지 않아요. 이벤트 색은 공연 색을 따라가요.", "", ""],
+    ["이벤트 예시", "공연명 | 이벤트명 | 이벤트 시작일 | 이벤트 종료일", "", ""],
+    ["", "레베카 | 관객 감사 이벤트 | 2026-11-15 | 2026-11-20", "", ""],
+    ["", "레베카 | 커튼콜 데이 | 2026-11-25 | 2026-11-25", "", ""],
+    ["", "레베카 | 스페셜 포토타임 | 2026-12-01 | 2026-12-03", "", ""],
+    ["", "프랑켄슈타인 | 관객 참여 이벤트 | 2026-12-05 | 2026-12-10", "", ""],
   ];
   const sheet1 = sheetXml([TEMPLATE_HEADERS], [18, 18, 14, 14, 14, 12, 24, 30, 16, 10], { freeze: true, headerStyle: 1, textCols: true });
-  const sheet2 = sheetXml(guide, [14, 90, 10, 24], { headerStyle: 1 });
-  const ct = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/worksheets/sheet2.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/></Types>`;
+  const sheet2 = sheetXml([EVENT_TEMPLATE_HEADERS], [22, 28, 16, 16], { freeze: true, headerStyle: 1, textCols: true });
+  const sheet3 = sheetXml(guide, [14, 90, 10, 24], { headerStyle: 1 });
+  const ct = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/worksheets/sheet2.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/worksheets/sheet3.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/></Types>`;
   const rels = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>`;
-  const wb = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="일정" sheetId="1" r:id="rId1"/><sheet name="작성 안내" sheetId="2" r:id="rId2"/></sheets></workbook>`;
-  const wbRels = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet2.xml"/><Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>`;
+  const wb = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="일정" sheetId="1" r:id="rId1"/><sheet name="이벤트" sheetId="2" r:id="rId2"/><sheet name="작성 안내" sheetId="3" r:id="rId3"/></sheets></workbook>`;
+  const wbRels = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet2.xml"/><Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet3.xml"/><Relationship Id="rId4" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>`;
   // xf 0 기본 / 1 머리글(굵게·흰 글씨·버건디 배경) / 2 텍스트 서식(@) — 날짜·시간을 글자로 입력해도 엑셀이 마음대로 바꾸지 않게
   const styles = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><fonts count="2"><font><sz val="11"/><name val="맑은 고딕"/></font><font><b/><sz val="11"/><color rgb="FFFFFFFF"/><name val="맑은 고딕"/></font></fonts><fills count="3"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill><fill><patternFill patternType="solid"><fgColor rgb="FF7A1F3D"/><bgColor indexed="64"/></patternFill></fill></fills><borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="3"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="0" fontId="1" fillId="2" borderId="0" xfId="0" applyFont="1" applyFill="1"/><xf numFmtId="49" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/></cellXfs></styleSheet>`;
   return zipStore([
     { name: "[Content_Types].xml", data: ct }, { name: "_rels/.rels", data: rels }, { name: "xl/workbook.xml", data: wb },
     { name: "xl/_rels/workbook.xml.rels", data: wbRels }, { name: "xl/styles.xml", data: styles },
-    { name: "xl/worksheets/sheet1.xml", data: sheet1 }, { name: "xl/worksheets/sheet2.xml", data: sheet2 },
+    { name: "xl/worksheets/sheet1.xml", data: sheet1 }, { name: "xl/worksheets/sheet2.xml", data: sheet2 }, { name: "xl/worksheets/sheet3.xml", data: sheet3 },
   ]);
 }
 

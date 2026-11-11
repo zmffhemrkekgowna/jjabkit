@@ -10,6 +10,7 @@ import { StatusTag } from "../ui/Tags";
 import type { EventItem } from "@/types/event";
 import { createShow, deleteShowBundle, restoreNote, restoreShowBundle, type ShowBundle } from "@/lib/db/shows";
 import { confirmDiscard } from "./dirty";
+import { withShowColor } from "@/lib/color";
 import { btn, ghost, inp, useAdminRun } from "./shared";
 import ShowForm from "./ShowForm";
 import RolesEditor from "./RolesEditor";
@@ -120,7 +121,7 @@ export default function ShowsAdmin({ shows, events, onWriteNotice, onOpenImport 
       <ShowForm key={`f-${show.id}`} show={show} run={run} />
       <ShowEventsEditor key={`e-${show.id}`} show={show} events={evOf(show.id)} run={run} />
       <RolesEditor key={`r-${show.id}`} show={show} run={run} />
-      <SessionsEditor key={`s-${show.id}`} show={show} events={evOf(show.id)} run={run} notify={setMsg} />
+      <SessionsEditor key={`s-${show.id}`} show={show} events={withShowColor(evOf(show.id), show)} run={run} notify={setMsg} />
     </div>
   );
 }

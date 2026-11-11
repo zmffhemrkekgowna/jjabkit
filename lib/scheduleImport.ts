@@ -3,6 +3,7 @@
  * 신규/기존/중복/오류를 가르고, 등록할 내용을 DB 함수에 넘길 모양으로 만들어요.
  */
 import type { Show } from "@/types/show";
+import type { EventItem } from "@/types/event";
 import { FileReadError, serialToParts, type SheetRow } from "./xlsxLite";
 
 export const MAX_IMPORT_ROWS = 2000;
@@ -86,6 +87,52 @@ export function parsePasted(text: string): SheetRow[] {
   if (rows.length > MAX_IMPORT_ROWS + 10) throw new FileReadError(`행이 너무 많아요(${rows.length}행). 한 번에 ${MAX_IMPORT_ROWS}행까지 붙여넣을 수 있어요. 나눠서 붙여넣어 주세요.`);
   if (rows.length && rows.every((r) => r.cells.length < 2)) throw new FileReadError("열이 구분되지 않았어요. 엑셀에서 셀을 선택해 복사(Ctrl+C)한 내용을 붙여넣어 주세요. 메모장·한글 등에서 복사한 글은 열을 알아볼 수 없어요.");
   return rows;
+}
+
+/* ---------- 이벤트 시트 ---------- */
+export const MAX_IMPORT_EVENTS = 2000;
+export interface EventImportRow { id: number; n: number; show: string; title: string; start: string; end: string }
+export type EventField = "show" | "title" | "start" | "end";
+export const EVENT_FIELD_LABEL: Record<EventField, string> = { show: "공연명", title: "이벤트명", start: "이벤트 시작일", end: "이벤트 종료일" };
+export const EVENT_ORDER: EventField[] = ["show", "title", "start", "end"]; // 이벤트 시트의 열 순서(A~D)
+const EVENT_ALIASES: Record<EventField, string[]> = {
+  show: ["공연명", "공연제목", "작품명", "작품", "공연"],
+  title: ["이벤트명", "이벤트제목", "이벤트이름", "이벤트", "행사명"],
+  start: ["이벤트시작일", "이벤트시작", "이벤트기간시작", "행사시작일"],
+  end: ["이벤트종료일", "이벤트종료", "이벤트기간종료", "행사종료일"],
+};
+const EVENT_LOOKUP = new Map<string, EventField>();
+for (const f of Object.keys(EVENT_ALIASES) as EventField[]) for (const a of EVENT_ALIASES[f]) EVENT_LOOKUP.set(normHeader(a), f);
+
+/** 붙여넣은 내용이 어느 시트의 것인지 머리글로 알아봐요(일정 칸에 이벤트를, 이벤트 칸에 일정을 붙여넣은 실수를 알려 주려고). */
+export function sheetKind(sheet: SheetRow[]): "schedule" | "event" | "unknown" {
+  const EV = new Set(["이벤트명", "이벤트시작일", "이벤트종료일", "이벤트제목"].map(normHeader));
+  const SC = new Set(["공연장", "공연일", "공연시간", "배우명", "공연시작일", "공연종료일"].map(normHeader));
+  let ev = 0, sc = 0;
+  for (const r of sheet.slice(0, 10)) for (const c of r.cells) { const k = normHeader(c ?? ""); if (EV.has(k)) ev++; if (SC.has(k)) sc++; }
+  return ev >= 2 && ev > sc ? "event" : sc >= 2 && sc > ev ? "schedule" : "unknown";
+}
+
+/** 이벤트 시트(공연명, 이벤트명, 이벤트 시작일, 이벤트 종료일)를 행으로 바꿔요. 머리글 없이 붙여넣으면 양식의 열 순서(A~D)를 따라요. */
+export function parseEventSheetRows(sheet: SheetRow[], opts: { allowHeaderless?: boolean } = {}): EventImportRow[] {
+  let hi = -1; let map = new Map<EventField, number>();
+  for (let i = 0; i < Math.min(sheet.length, 10); i++) {
+    const m = new Map<EventField, number>();
+    sheet[i].cells.forEach((c, ci) => { const f = EVENT_LOOKUP.get(normHeader(c ?? "")); if (f && !m.has(f)) m.set(f, ci); });
+    if (m.size >= 3) { hi = i; map = m; break; }
+  }
+  if (hi < 0 && opts.allowHeaderless) {
+    if (sheet.some((r) => r.cells.length >= 7)) throw new FileReadError("열이 너무 많아요. 일정 시트 내용 같아요 — 이벤트 시트(공연명·이벤트명·이벤트 시작일·이벤트 종료일 4열)를 복사해 붙여넣어 주세요.");
+    if (!sheet.some((r) => r.cells.length >= 4)) throw new FileReadError("열이 4개 미만이에요. 이벤트 시트의 A~D열(공연명, 이벤트명, 이벤트 시작일, 이벤트 종료일)을 함께 복사해 주세요. 머리글 없이 붙여넣을 때는 양식과 같은 열 순서여야 해요.");
+    map = new Map(EVENT_ORDER.map((f, i) => [f, i] as [EventField, number])); hi = -1;
+  } else if (hi < 0) throw new FileReadError("이벤트 머리글(공연명, 이벤트명, 이벤트 시작일, 이벤트 종료일)을 찾지 못했어요. 업로드 양식의 '이벤트' 시트를 복사해 주세요.");
+  const missing = EVENT_ORDER.filter((f) => !map.has(f));
+  if (missing.length) throw new FileReadError(`이벤트 시트에 필수 열이 없어요: ${missing.map((f) => EVENT_FIELD_LABEL[f]).join(", ")}. 양식의 머리글을 그대로 사용해 주세요.`);
+  const data = sheet.slice(hi + 1);
+  if (data.length === 0) throw new FileReadError("이벤트 머리글 아래에 입력된 행이 없어요. 데이터 행까지 함께 복사해 주세요.");
+  if (data.length > MAX_IMPORT_EVENTS) throw new FileReadError(`이벤트 행이 너무 많아요(${data.length}행). 한 번에 ${MAX_IMPORT_EVENTS}행까지 올릴 수 있어요.`);
+  const get = (cells: string[], f: EventField) => { const i = map.get(f); return i === undefined ? "" : (cells[i] ?? "").trim(); };
+  return data.map((r, i) => ({ id: i + 1, n: r.n, show: get(r.cells, "show"), title: get(r.cells, "title"), start: get(r.cells, "start"), end: get(r.cells, "end") }));
 }
 
 /* ---------- 값 정리 ---------- */
@@ -339,15 +386,116 @@ export function analyze(input: ImportRow[], shows: Show[], opt: AnalyzeOptions):
   return { rows: out, groups, counts: c };
 }
 
+/* ---------- 이벤트 분석 ---------- */
+export type EventStatus = "error" | "excluded" | "new" | "existing" | "dup";
+export interface AnalyzedEvent {
+  id: number; n: number; raw: EventImportRow; status: EventStatus; errors: string[]; warns: string[]; notes: string[];
+  groupKey: string; show: string; title: string; start: string; end: string;
+  /** 이벤트가 붙을 공연: sheet = 이번 일정 시트에서 함께 등록하는 공연, existing = 이미 등록된 공연 */
+  target: { kind: "sheet" | "existing"; showId: string | null; showTitle: string } | null;
+}
+export interface EventGroup { key: string; title: string; kind: "sheet-new" | "sheet-existing" | "existing" | "missing"; showId: string | null; color: string; rowIds: number[]; newEvents: number; existingEvents: number; errorRows: number }
+export interface EventAnalysis {
+  rows: AnalyzedEvent[]; groups: EventGroup[];
+  counts: { total: number; errors: number; excluded: number; dups: number; existing: number; newEvents: number; shows: number; warnRows: number };
+}
+
+const evPeriod = (s: string, e: string) => (s === e ? s : `${s} ~ ${e}`);
+
+/**
+ * 이벤트 행을 검사해요. 이벤트가 붙을 공연은 ① 이번에 붙여넣은 일정 시트의 공연(등록되는 경우) ② 이미 등록된 공연 순서로 찾아요.
+ * 이벤트 기간은 공연 기간과 별개라서 공연 기간 밖이어도, 다른 이벤트와 겹쳐도 오류가 아니에요.
+ * existingEvents는 DB에 이미 있는 이벤트(같은 공연·같은 이름·같은 기간이면 건너뛰어요).
+ */
+export function analyzeEvents(input: EventImportRow[], shows: Show[], existingEvents: EventItem[], schedule: Analysis | null, excluded: Set<number>): EventAnalysis {
+  const rows: AnalyzedEvent[] = input.map((r) => ({
+    id: r.id, n: r.n, raw: r, status: excluded.has(r.id) ? "excluded" : "new", errors: [], warns: [], notes: [], groupKey: "",
+    show: r.show.trim(), title: r.title.trim(), start: "", end: "", target: null,
+  }));
+  const showByKey = new Map<string, Show[]>();
+  for (const s of shows) showByKey.set(normKey(s.title), [...(showByKey.get(normKey(s.title)) ?? []), s]);
+
+  for (const r of rows) {
+    if (r.status === "excluded") continue;
+    const e = r.errors, raw = r.raw;
+    if (!raw.show.trim()) e.push("공연명이 비어 있어요"); else if (raw.show.trim().length > 100) e.push("공연명이 너무 길어요(100자 이내)"); else r.groupKey = normKey(raw.show);
+    if (!raw.title.trim()) e.push("이벤트명이 비어 있어요"); else if (raw.title.trim().length > 100) e.push("이벤트명이 너무 길어요(100자 이내)");
+    if (!raw.start.trim()) e.push("이벤트 시작일이 비어 있어요"); else { const d = normDate(raw.start); if (d) r.start = d; else e.push(`이벤트 시작일 형식을 읽을 수 없어요: '${raw.start}' (예: 2026-11-15)`); }
+    if (!raw.end.trim()) e.push("이벤트 종료일이 비어 있어요"); else { const d = normDate(raw.end); if (d) r.end = d; else e.push(`이벤트 종료일 형식을 읽을 수 없어요: '${raw.end}' (예: 2026-11-20)`); }
+    if (r.start && r.end && r.start > r.end) e.push(`이벤트 시작일(${r.start})이 종료일(${r.end})보다 늦어요`);
+
+    if (r.groupKey) {
+      // ① 이번 일정 시트에서 등록되는 공연
+      const g = schedule?.groups.find((x) => x.key === r.groupKey);
+      const registrable = !!g && schedule!.rows.some((x) => g.rowIds.includes(x.id) && (x.status === "new" || x.status === "existing"));
+      if (g && registrable) {
+        r.target = { kind: "sheet", showId: g.mode === "existing" ? g.existingId : null, showTitle: g.title };
+      } else {
+        const cands = showByKey.get(r.groupKey) ?? [];
+        const hit = (r.start && r.end ? cands.find((s) => s.start && s.end && s.start <= r.end && r.start <= s.end) : undefined) ?? cands[0];
+        if (hit) {
+          r.target = { kind: "existing", showId: hit.id, showTitle: hit.title };
+          if (cands.length > 1) r.warns.push(`같은 이름의 공연이 ${cands.length}개 있어요 — '${hit.title}'(${hit.start || "?"} ~ ${hit.end || "?"})에 등록돼요`);
+          if (g && !registrable) r.warns.push("이번 일정 시트의 이 공연 행에 오류가 있어 일정은 등록되지 않아요 — 이벤트는 이미 등록된 같은 이름의 공연에 붙어요");
+        } else if (g) e.push("이번 일정 시트의 이 공연 행에 오류가 있어 공연이 등록되지 않아요. 일정 시트의 오류를 먼저 고쳐 주세요");
+        else e.push(`'${raw.show.trim()}' 공연을 찾을 수 없어요 — 일정 시트에 함께 적거나, 이미 등록된 공연명과 같아야 해요(띄어쓰기·대소문자는 무시)`);
+      }
+    }
+  }
+
+  // 같은 이벤트(같은 공연·이름·기간)의 중복과, 이미 등록된 이벤트
+  const seen = new Map<string, number>();
+  for (const r of rows) {
+    if (r.status !== "new" || r.errors.length || !r.target) continue;
+    const tk = r.target.showId ?? `sheet:${r.groupKey}`;
+    const k = `${tk}|${normKey(r.title)}|${r.start}|${r.end}`;
+    const first = seen.get(k);
+    if (first !== undefined) { r.status = "dup"; r.notes.push(`같은 이벤트가 ${first}행에 이미 있어요 — 건너뛰어요`); continue; }
+    seen.set(k, r.n);
+    if (r.target.showId && existingEvents.some((x) => x.showId === r.target!.showId && normKey(x.title) === normKey(r.title) && x.startsOn === r.start && (x.endsOn || x.startsOn) === r.end)) {
+      r.status = "existing"; r.notes.push("이미 등록된 이벤트예요(같은 공연·이름·기간) — 건너뛰어요");
+    }
+  }
+  for (const r of rows) if (r.status !== "excluded" && r.errors.length) r.status = "error";
+
+  // 공연별 묶음
+  const byKey = new Map<string, AnalyzedEvent[]>();
+  for (const r of rows) { const k = r.groupKey || `__${r.id}`; byKey.set(k, [...(byKey.get(k) ?? []), r]); }
+  const groups: EventGroup[] = [];
+  for (const [key, list] of byKey) {
+    const withTarget = list.find((x) => x.target);
+    const t = withTarget?.target ?? null;
+    const sg = schedule?.groups.find((x) => x.key === key);
+    const showObj = t?.showId ? shows.find((x) => x.id === t.showId) : undefined;
+    const kind: EventGroup["kind"] = !t ? "missing" : t.kind === "sheet" ? (t.showId ? "sheet-existing" : "sheet-new") : "existing";
+    groups.push({
+      key, title: t?.showTitle || list[0].show || "(공연명 없음)", kind, showId: t?.showId ?? null, color: showObj?.color ?? "",
+      rowIds: list.map((x) => x.id), newEvents: list.filter((x) => x.status === "new").length, existingEvents: list.filter((x) => x.status === "existing").length,
+      errorRows: list.filter((x) => x.status === "error").length,
+    });
+    void sg;
+  }
+  const c = { total: rows.length, errors: 0, excluded: 0, dups: 0, existing: 0, newEvents: 0, shows: 0, warnRows: 0 };
+  for (const r of rows) {
+    if (r.status === "error") c.errors++; else if (r.status === "excluded") c.excluded++; else if (r.status === "dup") c.dups++; else if (r.status === "existing") c.existing++; else c.newEvents++;
+    if (r.status !== "error" && r.status !== "excluded" && r.warns.length) c.warnRows++;
+  }
+  c.shows = groups.filter((g) => g.newEvents > 0).length;
+  return { rows, groups, counts: c };
+}
+
 /* ---------- DB 함수에 넘길 내용 ---------- */
 export interface SkippedItem { row: number; title: string; date: string; time: string; actor: string; reason: string }
 export interface ImportPayload {
-  shows: { title: string; mode: ShowChoice; show_id: string | null; force_new: boolean; venue: string; start: string; end: string; genre: string; link: string;
+  shows: { key: string; title: string; mode: ShowChoice; show_id: string | null; force_new: boolean; venue: string; start: string; end: string; genre: string; link: string;
     sessions: { date: string; time: string; cast: { role: string; actor: string }[] }[] }[];
-  skipped: SkippedItem[]; registrableRows: number;
+  /** 이벤트: 이번에 함께 등록하는 공연이면 show_key, 이미 등록된 공연이면 show_id로 공연을 가리켜요. */
+  events: { show_key: string | null; show_id: string | null; title: string; start: string; end: string }[];
+  skipped: SkippedItem[]; registrableRows: number; registrableEvents: number;
 }
-export function buildPayload(a: Analysis): ImportPayload {
+export function buildPayload(a: Analysis | null, ea: EventAnalysis | null = null): ImportPayload {
   const shows: ImportPayload["shows"] = []; const skipped: SkippedItem[] = []; let registrable = 0;
+  if (!a) a = { rows: [], groups: [], counts: { total: 0, errors: 0, excluded: 0, dups: 0, warnRows: 0, newShows: 0, existingShows: 0, newSessions: 0, existingSessions: 0, newRows: 0, existingRows: 0, assignments: 0 } };
   const reason = (r: AnalyzedRow) => r.status === "error" ? r.errors.join(" / ") : r.status === "excluded" ? "직접 제외한 행" : "같은 파일 안에서 중복된 행(같은 회차·같은 배역·같은 배우)";
   for (const r of a.rows) if (r.status === "error" || r.status === "excluded" || r.status === "dup") skipped.push({ row: r.n, title: r.title, date: r.raw.date, time: r.raw.time, actor: r.raw.actor, reason: reason(r) });
   for (const g of a.groups) {
@@ -360,10 +508,19 @@ export function buildPayload(a: Analysis): ImportPayload {
       for (const c of r.cast) s.cast.set(normKey(c.role), c);
     }
     shows.push({
-      title: g.title, mode: g.mode, show_id: g.mode === "existing" ? g.existingId : null, force_new: g.mode === "new" && !!g.existingId,
+      key: g.key, title: g.title, mode: g.mode, show_id: g.mode === "existing" ? g.existingId : null, force_new: g.mode === "new" && !!g.existingId,
       venue: g.venue, start: g.start, end: g.end, genre: g.genre, link: g.link,
       sessions: [...sess.values()].sort((x, y) => `${x.date} ${x.time}`.localeCompare(`${y.date} ${y.time}`)).map((s) => ({ date: s.date, time: s.time, cast: [...s.cast.values()] })),
     });
   }
-  return { shows, skipped, registrableRows: registrable };
+  const events: ImportPayload["events"] = [];
+  if (ea) for (const r of ea.rows) {
+    const label = `[이벤트] ${r.show} · ${r.title}`;
+    if (r.status === "new" && r.target) events.push({ show_key: r.target.kind === "sheet" ? r.groupKey : null, show_id: r.target.showId, title: r.title, start: r.start, end: r.end });
+    else if (r.status === "error") skipped.push({ row: r.n, title: label, date: `${r.raw.start}~${r.raw.end}`, time: "", actor: "", reason: r.errors.join(" / ") });
+    else if (r.status === "excluded") skipped.push({ row: r.n, title: label, date: `${r.raw.start}~${r.raw.end}`, time: "", actor: "", reason: "직접 제외한 이벤트 행" });
+    else if (r.status === "dup") skipped.push({ row: r.n, title: label, date: evPeriod(r.start, r.end), time: "", actor: "", reason: "같은 파일 안에서 중복된 이벤트(같은 공연·이름·기간)" });
+    else if (r.status === "existing") skipped.push({ row: r.n, title: label, date: evPeriod(r.start, r.end), time: "", actor: "", reason: "이미 등록된 이벤트(같은 공연·이름·기간)" });
+  }
+  return { shows, events, skipped, registrableRows: registrable, registrableEvents: events.length };
 }
