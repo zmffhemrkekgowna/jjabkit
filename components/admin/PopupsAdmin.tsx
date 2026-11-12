@@ -1,10 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useDirty } from "./dirty";
-import { Eye, EyeOff, Pencil, Plus, Trash2, X } from "lucide-react";
+import { Eye, EyeOff, ImagePlus, Pencil, Plus, Trash2, X } from "lucide-react";
 import type { Popup } from "@/types/popup";
-import { createPopup, deletePopup, updatePopup, type PopupInput } from "@/lib/db/popups";
+import { createPopup, deletePopup, updatePopup, uploadPopupImage, POPUP_IMAGE_MAX_MB, type PopupInput } from "@/lib/db/popups";
 import { PHASE_LABEL, isHttpUrl, periodText, phaseOf } from "@/lib/period";
 import { Fld, Sec, btn, ghost, iconBtn, inp, useAdminRun } from "./shared";
 
@@ -21,6 +21,15 @@ export default function PopupsAdmin({ popups }: { popups: Popup[] }) {
   const [form, setForm] = useState<PopupInput>(EMPTY);
   const [delId, setDelId] = useState<string | null>(null);
 
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
+  const onPickImage = async (f: File) => {
+    setUploading(true);
+    let url = "";
+    const ok = await run(async (db) => { url = await uploadPopupImage(db, f); }, "이미지를 올렸어요. 아래 '팝업 올리기'를 눌러 저장해 주세요.");
+    setUploading(false);
+    if (ok && url) setForm((x) => ({ ...x, imageUrl: url }));
+  };
   const set = <K extends keyof PopupInput>(k: K, v: PopupInput[K]) => setForm((f) => ({ ...f, [k]: v }));
   const reset = () => { setEditing(null); setForm(EMPTY); };
   useDirty("popup-form", "팝업 입력", editing === null && JSON.stringify(form) !== JSON.stringify(EMPTY));
@@ -65,6 +74,20 @@ export default function PopupsAdmin({ popups }: { popups: Popup[] }) {
           </Fld>
           <Fld label="이미지 주소 (선택)" className="sm:col-span-2">
             <input value={form.imageUrl} maxLength={500} onChange={(e) => set("imageUrl", e.target.value)} className={inp} placeholder="https://.../poster.jpg" inputMode="url" />
+            <div className="mt-2 flex flex-wrap items-center gap-2">
+              <input ref={fileRef} type="file" accept="image/*" hidden data-testid="popup-image-file" onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) void onPickImage(f); }} />
+              <button type="button" onClick={() => fileRef.current?.click()} disabled={uploading} data-testid="popup-image-upload" className={`${ghost} inline-flex items-center gap-1.5`}>
+                <ImagePlus size={16} aria-hidden /> {uploading ? "올리는 중…" : "이미지 파일 올리기"}
+              </button>
+              {form.imageUrl.trim() && isHttpUrl(form.imageUrl.trim()) && (
+                <>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={form.imageUrl.trim()} alt="올린 이미지 미리보기" className="h-14 w-14 rounded-lg border border-line object-cover" data-testid="popup-image-preview" />
+                  <button type="button" onClick={() => { set("imageUrl", ""); set("imageOnly", false); }} className="text-xs font-medium text-mute underline">이미지 빼기</button>
+                </>
+              )}
+            </div>
+            <p className="mt-1 text-xs text-mute">사진·갤러리에서 파일을 골라 바로 올리거나, 위 칸에 이미지 주소를 붙여 넣어도 돼요. ({POPUP_IMAGE_MAX_MB}MB 이하) 올린 뒤 아래 '팝업 올리기'(수정 중이면 저장)를 눌러야 팝업에 반영돼요.</p>
           </Fld>
           <div className="sm:col-span-2">
             <label className={`flex min-h-[44px] items-center gap-2 rounded-lg border border-line px-3 text-sm ${form.imageUrl.trim() ? "" : "opacity-60"}`}>

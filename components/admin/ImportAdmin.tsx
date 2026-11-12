@@ -27,7 +27,7 @@ const EV_STATUS: Record<EventStatus, { label: string; cls: string }> = {
 const EV_EDIT_FIELDS: EventField[] = ["show", "title", "start", "end"];
 type Filter = "all" | "error" | "new" | "existing" | "warn";
 const FILTERS: [Filter, string][] = [["all", "전체"], ["error", "오류만"], ["new", "신규"], ["existing", "기존 데이터"], ["warn", "경고"]];
-const EDIT_FIELDS: RowField[] = ["title", "venue", "start", "end", "date", "time", "actor", "role", "link", "genre"];
+const EDIT_FIELDS: RowField[] = ["title", "venue", "start", "end", "date", "time", "actor", "role", "link", "genre", "age", "run"];
 const nowStamp = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")} ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`; };
 const fmtAt = (iso: string) => { const d = new Date(iso); return Number.isNaN(+d) ? iso : `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, "0")}.${String(d.getDate()).padStart(2, "0")} ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`; };
 
@@ -279,7 +279,7 @@ export default function ImportAdmin({ shows, events = [] }: { shows: Show[]; eve
                   <div className="flex flex-wrap items-center gap-2 border-b border-line bg-bg px-3 py-2">
                     <span className="font-bold">{g.title}</span>
                     <span className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${g.mode === "new" ? "bg-brand text-onbrand" : "border border-line text-mute"}`}>{g.mode === "new" ? "신규 공연" : "기존 공연"}</span>
-                    <span className="text-xs text-mute">{g.venue} · {g.start && g.end ? `${g.start} ~ ${g.end}` : "기간 미확인"} · 신규 회차 {g.newSessions} · 기존 회차 {g.existingSessions}{g.errorRows ? ` · 오류 ${g.errorRows}행` : ""}</span>
+                    <span className="text-xs text-mute">{g.venue} · {g.start && g.end ? `${g.start} ~ ${g.end}` : "기간 미확인"}{g.age ? ` · ${g.age}` : ""}{g.run ? ` · ${g.run}` : ""} · 신규 회차 {g.newSessions} · 기존 회차 {g.existingSessions}{g.errorRows ? ` · 오류 ${g.errorRows}행` : ""}</span>
                     {g.existingId && (
                       <label className="ml-auto text-xs text-mute">처리 방식 <select value={g.mode} onChange={(e) => setChoice((s) => ({ ...s, [g.key]: e.target.value as ShowChoice }))} className="ml-1 rounded-lg border border-line bg-card px-2 py-1 text-xs text-ink" data-testid="group-mode">
                         <option value="existing">기존 공연에 회차 추가{g.periodMatch ? "" : ` (기존 ${g.existingPeriod})`}</option>
