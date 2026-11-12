@@ -39,4 +39,15 @@ async function run<T>(p: PromiseLike<{ data: T; error: { message: string } | nul
 }
 export const createPopup = (db: SupabaseClient, p: PopupInput) => run(db.from("popups").insert(toColumns(p)));
 export const updatePopup = (db: SupabaseClient, id: string, p: PopupInput, hadImageOnly = false) => run(db.from("popups").update(toColumns(p, hadImageOnly)).eq("id", id));
+/** 팝업 이미지를 포스터와 같은 저장 공간(posters)의 popups/ 폴더에 올리고 공개 주소를 돌려줘요. (새 DB 설정 없이 지금 권한 그대로 써요) */
+export const POPUP_IMAGE_MAX_MB = 5;
+export async function uploadPopupImage(db: SupabaseClient, file: File): Promise<string> {
+  if (!file.type.startsWith("image/")) throw new Error("이미지 파일(JPG·PNG·WebP·GIF)만 올릴 수 있어요.");
+  if (file.size > POPUP_IMAGE_MAX_MB * 1024 * 1024) throw new Error(`이미지가 너무 커요. ${POPUP_IMAGE_MAX_MB}MB 이하로 줄여서 올려 주세요.`);
+  const ext = (file.name.split(".").pop() || "jpg").toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 5) || "jpg";
+  const path = `popups/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+  const { error } = await db.storage.from("posters").upload(path, file, { contentType: file.type, cacheControl: "31536000" });
+  if (error) throw new Error(error.message);
+  return db.storage.from("posters").getPublicUrl(path).data.publicUrl;
+}
 export const deletePopup = (db: SupabaseClient, id: string) => run(db.from("popups").delete().eq("id", id));
