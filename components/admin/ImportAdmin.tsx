@@ -10,6 +10,8 @@ import { isHex6 } from "@/lib/color";
 import { fetchImportLogs, runImport, type ImportLog, type ImportResult } from "@/lib/db/scheduleImport";
 import { downloadBlob, safeName } from "@/lib/download";
 import { Sec, btn, ghost, inp, useAdminRun, friendly } from "./shared";
+import ImportArt from "./ImportArt";
+import { applyArt, artChanges, type ArtDraft, type ArtReport } from "@/lib/db/importArt";
 import { useDirty } from "./dirty";
 
 const STATUS: Record<RowStatus, { label: string; cls: string }> = {
@@ -46,6 +48,8 @@ export default function ImportAdmin({ shows, events = [] }: { shows: Show[]; eve
   const [evExcluded, setEvExcluded] = useState<Set<number>>(new Set());
   const [evEditing, setEvEditing] = useState<number | null>(null);
   const [fileHash, setFileHash] = useState("");
+  // 공연별로 예약해 둔 포스터·색(키 = 공연 묶음 key). 일괄 등록을 누를 때만 DB에 반영돼요.
+  const [art, setArt] = useState<Record<string, ArtDraft>>({});
   const [confirming, setConfirming] = useState(false);
   const [error, setError] = useState("");
   const [updateCast, setUpdateCast] = useState(false);
@@ -57,7 +61,7 @@ export default function ImportAdmin({ shows, events = [] }: { shows: Show[]; eve
   const [editing, setEditing] = useState<number | null>(null);
   const [allowErrors, setAllowErrors] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [result, setResult] = useState<{ r: ImportResult; registered: number; registeredEvents: number; skipped: { row: number; title: string; date: string; time: string; actor: string; reason: string }[]; file: string } | null>(null);
+  const [result, setResult] = useState<{ r: ImportResult; registered: number; registeredEvents: number; artReport?: ArtReport[]; skipped: { row: number; title: string; date: string; time: string; actor: string; reason: string }[]; file: string } | null>(null);
   const [logs, setLogs] = useState<ImportLog[]>([]);
   const [logsMissing, setLogsMissing] = useState(false);
   const [openLog, setOpenLog] = useState<string | null>(null);
@@ -86,7 +90,7 @@ export default function ImportAdmin({ shows, events = [] }: { shows: Show[]; eve
 
   const resetSchedule = () => { setText(""); setConfirming(false); setRows(null); setMeta(null); setError(""); setChoice({}); setExcluded(new Set()); setEditing(null); setFilter("all"); if (fileRef.current) fileRef.current.value = ""; };
   const resetEvents = () => { setEvText(""); setConfirming(false); setEvRows(null); setEvMeta(null); setEvError(""); setEvExcluded(new Set()); setEvEditing(null); };
-  const reset = () => { resetSchedule(); resetEvents(); setAllowErrors(false); };
+  const reset = () => { resetSchedule(); resetEvents(); setAllowErrors(false); setArt({}); };
 
   const pick = async (f: File | undefined) => {
     if (!f) return;
@@ -173,19 +177,31 @@ export default function ImportAdmin({ shows, events = [] }: { shows: Show[]; eve
   const newSessions = c?.newSessions ?? 0, newEvents = ec?.newEvents ?? 0;
   const needUpdate = newSessions === 0 && newEvents === 0 && !(updateCast && (c?.existingRows ?? 0) > 0);
   const errorBlock = totalErrors > 0 && !allowErrors;
-  const canRegister = !!payload && (payload.shows.length > 0 || payload.events.length > 0) && !needUpdate && !errorBlock && !busy;
+  // 포스터·색을 예약한 공연만 모아요(예약이 없는 공연은 기존 포스터·색을 그대로 둬요).
+  const artItems = (analysis?.groups ?? []).filter((g) => artChanges(art[g.key])).map((g) => ({ title: g.title, showId: g.mode === "existing" ? g.existingId : null, draft: art[g.key] }));
+  const rpcReady = !!payload && (payload.shows.length > 0 || payload.events.length > 0) && !needUpdate;
+  const canRegister = !!payload && (rpcReady || artItems.length > 0) && !errorBlock && !busy;
 
   const register = async () => {
     if (!payload || !(meta || evMeta) || !canRegister) return;
     setConfirming(false);
     setBusy(true);
     let res: ImportResult | null = null;
-    const ok = await run(async (d) => {
+    const ok = !rpcReady ? true : await run(async (d) => {
       const fileName = meta && evMeta && evMeta.sheet === "붙여넣기" ? `${meta.name} + 이벤트` : (meta?.name ?? evMeta?.name ?? "");
       res = await runImport(d, payload, { fileName, fileHash, totalRows: (c?.total ?? 0) + (ec?.total ?? 0), errorRows: totalErrors, updateCast, linkEventTitle: linkEvent && analysis ? linkTitle.trim() : "" });
     }, (() => "일괄 등록을 마쳤어요."));
+    // 회차·이벤트 등록이 성공한 뒤에 포스터·색을 저장해요. 등록할 회차가 없어도 포스터·색만 따로 저장할 수 있어요.
+    let artReport: ArtReport[] = [];
+    if (ok && artItems.length) {
+      await run(async (d) => { artReport = await applyArt(d, artItems); }, () => (artReport.some((x) => x.poster === "failed" || x.color === "failed") ? "" : "포스터·색상을 저장했어요."));
+    }
     setBusy(false);
-    if (ok && res) { setResult({ r: res, registered: payload.registrableRows, registeredEvents: payload.registrableEvents, skipped: payload.skipped, file: meta?.name ?? evMeta?.name ?? "" }); reset(); void loadLogs(); }
+    if (ok && (res || artItems.length)) {
+      const zero: ImportResult = { log_id: "", new_shows: 0, existing_shows: 0, new_sessions: 0, existing_sessions: 0, updated_casts: 0, new_roles: 0, new_actors: 0, link_events: 0 } as ImportResult;
+      setResult({ r: res ?? zero, registered: rpcReady ? payload.registrableRows : 0, registeredEvents: rpcReady ? payload.registrableEvents : 0, artReport, skipped: payload.skipped, file: meta?.name ?? evMeta?.name ?? "" });
+      reset(); void loadLogs();
+    }
   };
 
   const downloadTemplate = () => { downloadBlob(new Blob([buildTemplateXlsx() as unknown as BlobPart], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }), "jjabkit-schedule-template.xlsx"); };
@@ -243,6 +259,18 @@ export default function ImportAdmin({ shows, events = [] }: { shows: Show[]; eve
             <p className="mt-2 text-sm" data-testid="result-rows">성공 처리 <b>{result.registered + result.registeredEvents}</b>행{result.registeredEvents ? <> (이벤트 {result.registeredEvents}행 포함)</> : null} · 등록하지 않은 행 <b>{result.skipped.length}</b>행</p>
             <p className="mt-1 text-sm">등록하지 않은 행 <b data-testid="skipped-count">{result.skipped.length}</b>개{result.skipped.length ? "의 사유:" : "."}</p>
             {result.skipped.length > 0 && <SkippedList items={result.skipped} />}
+            {result.artReport && result.artReport.length > 0 && (
+              <div className="mt-3 rounded-lg border border-line p-3 text-sm" data-testid="art-result">
+                <p className="font-medium">포스터·색상</p>
+                <ul className="mt-1 space-y-0.5 text-xs">
+                  {result.artReport.map((a) => {
+                    const bits = [a.poster === "uploaded" ? "포스터 올림" : a.poster === "removed" ? "포스터 삭제" : a.poster === "failed" ? "포스터 실패" : "", a.color === "set" ? "색 변경" : a.color === "reset" ? "색 자동 배정으로 되돌림" : a.color === "failed" ? "색 실패" : ""].filter(Boolean);
+                    const bad = a.poster === "failed" || a.color === "failed";
+                    return <li key={a.title} className={bad ? "font-medium text-brand" : "text-mute"}><b className="text-ink">{a.title}</b> — {bits.join(" · ") || "변경 없음"}{a.error ? ` (${a.error})` : ""}</li>;
+                  })}
+                </ul>
+              </div>
+            )}
           </div>
         </Sec>
       )}
@@ -286,6 +314,8 @@ export default function ImportAdmin({ shows, events = [] }: { shows: Show[]; eve
                         <option value="new">새 공연으로 등록</option></select></label>
                     )}
                   </div>
+                  <ImportArt title={g.title} draft={art[g.key] ?? {}} onChange={(d) => setArt((m) => ({ ...m, [g.key]: d }))}
+                    current={(() => { const ex = g.mode === "existing" && g.existingId ? shows.find((x) => x.id === g.existingId) : null; return ex ? { img: ex.img, color: ex.color, grad: ex.grad } : null; })()} />
                   <div className="overflow-x-auto">
                     <table className="w-full min-w-[820px] text-left text-sm">
                       <thead className="text-xs text-mute"><tr>{["행", "공연일", "시간", "배우명", "배역(자동 포함)", "상태", "안내", ""].map((h) => <th key={h} className="px-2 py-1.5 font-medium">{h}</th>)}</tr></thead>
@@ -352,12 +382,13 @@ export default function ImportAdmin({ shows, events = [] }: { shows: Show[]; eve
             {totalErrors > 0 && <label className="flex items-start gap-2 text-sm"><input type="checkbox" checked={allowErrors} onChange={(e) => setAllowErrors(e.target.checked)} className="mt-1" data-testid="allow-errors" />
               <span>오류가 있는 {totalErrors}행은 <b>제외하고</b> 나머지만 등록할게요 <span className="text-xs text-mute">(제외한 행은 결과에 사유와 함께 남아요. 위에서 직접 고치면 같이 등록돼요)</span></span></label>}
             <div className="flex flex-wrap items-center gap-3">
-              <button onClick={() => setConfirming(true)} disabled={!canRegister || confirming} className={btn} data-testid="register">{busy ? "등록 중…" : `일괄 등록 (${analysis ? `신규 회차 ${newSessions}개` : ""}${analysis && evAnalysis ? " · " : ""}${evAnalysis ? `신규 이벤트 ${newEvents}개` : ""})`}</button>
-              <span className="text-xs text-mute">{needUpdate ? (evAnalysis ? "새로 등록할 회차·이벤트가 없어요(전부 기존 데이터)." : payload.shows.length ? "새로 등록할 회차가 없어요(전부 기존 데이터)." : "등록할 행이 없어요.") : errorBlock ? "오류를 고치거나 위 체크박스로 제외해 주세요." : "한 번에 처리돼요 — 중간에 실패하면 아무것도 등록되지 않아요."}</span>
+              <button onClick={() => setConfirming(true)} disabled={!canRegister || confirming} className={btn} data-testid="register">{busy ? "등록 중…" : `일괄 등록 (${analysis ? `신규 회차 ${newSessions}개` : ""}${analysis && evAnalysis ? " · " : ""}${evAnalysis ? `신규 이벤트 ${newEvents}개` : ""}${artItems.length ? `${analysis || evAnalysis ? " · " : ""}포스터·색 ${artItems.length}곳` : ""})`}</button>
+              <span className="text-xs text-mute">{needUpdate && artItems.length > 0 ? "새로 등록할 회차·이벤트는 없어요. 예약한 포스터·색상만 저장해요." : needUpdate ? (evAnalysis ? "새로 등록할 회차·이벤트가 없어요(전부 기존 데이터)." : payload.shows.length ? "새로 등록할 회차가 없어요(전부 기존 데이터)." : "등록할 행이 없어요.") : errorBlock ? "오류를 고치거나 위 체크박스로 제외해 주세요." : "한 번에 처리돼요 — 중간에 실패하면 아무것도 등록되지 않아요."}</span>
             </div>
             {confirming && canRegister && (
               <div role="alertdialog" aria-label="최종 확인" data-testid="confirm-box" className="rounded-lg border border-brand bg-hit p-3 text-sm">
                 <p className="font-bold text-brand">이대로 등록할까요?</p>
+                {artItems.length > 0 && <p className="mt-1" data-testid="confirm-art">포스터·색상 저장: {artItems.map((x) => `${x.title}(${[x.draft.file ? (x.showId ? "포스터 교체/등록" : "포스터") : x.draft.removePoster ? "포스터 삭제" : "", x.draft.color === undefined ? "" : x.draft.color ? "색 변경" : "색 자동 배정"].filter(Boolean).join("·")})`).join(", ")} — 예약하지 않은 공연의 포스터·색은 그대로예요.</p>}
                 <p className="mt-1">{c ? <>신규 공연 <b>{c.newShows}</b>개 · 신규 회차 <b>{c.newSessions}</b>개 · 배우 배정 <b>{c.assignments}</b>건{c.existingSessions ? <> · 기존 회차 <b>{c.existingSessions}</b>개{updateCast ? "(캐스팅을 엑셀대로 변경)" : "(그대로 유지)"}</> : null}</> : null}{ec ? <>{c ? " · " : ""}신규 이벤트 <b>{ec.newEvents}</b>개{ec.existing + ec.dups ? <> (이미 있는 이벤트 <b>{ec.existing + ec.dups}</b>개는 건너뜀)</> : null}</> : null}{totalErrors ? <> · 오류로 등록하지 않는 행 <b>{totalErrors}</b>개</> : null}</p>
                 <div className="mt-2 flex gap-2">
                   <button onClick={() => void register()} disabled={busy} className={btn} data-testid="register-confirm">확인, 등록할게요</button>
