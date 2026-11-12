@@ -35,7 +35,7 @@ interface Props {
 }
 
 export default function ImportArt({ title, current, draft, onChange }: Props) {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(true);
   const fileRef = useRef<HTMLInputElement>(null);
   const [preview, setPreview] = useState("");
   const [msg, setMsg] = useState("");

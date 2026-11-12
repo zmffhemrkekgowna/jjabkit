@@ -247,6 +247,10 @@ export default function ImportAdmin({ shows, events = [] }: { shows: Show[]; eve
         {logsMissing && <p className="mt-3 rounded-lg border border-line bg-hit px-3 py-2 text-xs text-brand">DB에 0014_schedule_import.sql 이 아직 적용되지 않았어요. Supabase SQL Editor에서 실행해야 일괄 등록과 업로드 이력을 쓸 수 있어요. (미리보기는 지금도 볼 수 있어요)</p>}
       </Sec>
 
+      <Sec title="③ 공연별 포스터 · 스케줄 색상">
+        <QuickArt shows={shows} />
+      </Sec>
+
       {result && (
         <Sec title="등록 결과" right={<button onClick={() => setResult(null)} className={ghost}>닫기</button>}>
           <div data-testid="import-result">
@@ -422,6 +426,47 @@ export default function ImportAdmin({ shows, events = [] }: { shows: Show[]; eve
           </ul>
         )}
       </Sec>
+    </div>
+  );
+}
+
+/** 엑셀을 붙여넣지 않아도, 이미 등록된 공연을 골라 포스터와 스케줄 색상만 바로 저장해요. */
+function QuickArt({ shows }: { shows: Show[] }) {
+  const { run, msg, setMsg } = useAdminRun();
+  const [id, setId] = useState("");
+  const [draft, setDraft] = useState<ArtDraft>({});
+  const [busy, setBusy] = useState(false);
+  const show = shows.find((x) => x.id === id) ?? null;
+  const changed = !!artChanges(draft);
+  const save = async () => {
+    if (!show || !changed || busy) return;
+    setBusy(true);
+    let rep: ArtReport[] = [];
+    const ok = await run(async (d) => { rep = await applyArt(d, [{ title: show.title, showId: show.id, draft }]); }, () => (rep.some((x) => x.poster === "failed" || x.color === "failed") ? "" : "포스터·색상을 저장했어요."));
+    if (ok) {
+      const bad = rep.find((x) => x.poster === "failed" || x.color === "failed");
+      if (bad) setMsg(bad.error || "일부 저장에 실패했어요.");
+      else setDraft({});
+    }
+    setBusy(false);
+  };
+  return (
+    <div data-testid="quick-art">
+      <p className="mb-2 text-xs leading-relaxed text-mute">이미 등록된 공연의 포스터와 달력 색상을 바로 바꿀 수 있어요. 바꾸지 않은 값은 그대로 유지돼요.</p>
+      <select value={id} onChange={(e) => { setId(e.target.value); setDraft({}); setMsg(""); }} className={`${inp} w-full`} aria-label="공연 선택" data-testid="quick-art-select">
+        <option value="">공연을 선택하세요</option>
+        {shows.map((x) => <option key={x.id} value={x.id}>{x.title}</option>)}
+      </select>
+      {show && (
+        <div className="mt-3">
+          <ImportArt key={show.id} title={show.title} draft={draft} onChange={setDraft} current={{ img: show.img, color: show.color, grad: show.grad }} />
+          <div className="mt-3 flex items-center gap-3">
+            <button onClick={() => void save()} disabled={!changed || busy} className={btn} data-testid="quick-art-save">{busy ? "저장 중…" : "포스터·색상 저장"}</button>
+            {!changed && <span className="text-xs text-mute">바꾼 내용이 없어요.</span>}
+          </div>
+        </div>
+      )}
+      {msg && <p role="status" className="mt-2 text-sm text-mute" data-testid="quick-art-msg">{msg}</p>}
     </div>
   );
 }
