@@ -13,13 +13,15 @@ export interface ImportRow {
   id: number; n: number; // n = 엑셀(파일)의 행 번호
   title: string; venue: string; start: string; end: string; date: string; time: string;
   actor: string; link: string; role: string; genre: string;
+  /** 관람등급·러닝타임: 양식의 K·L열(선택). */
+  age: string; run: string;
 }
-export type RowField = "title" | "venue" | "start" | "end" | "date" | "time" | "actor" | "link" | "role" | "genre";
+export type RowField = "title" | "venue" | "start" | "end" | "date" | "time" | "actor" | "link" | "role" | "genre" | "age" | "run";
 export const FIELD_LABEL: Record<RowField, string> = {
   title: "공연명", venue: "공연장", start: "공연 시작일", end: "공연 종료일", date: "공연일", time: "공연 시간",
-  actor: "배우명", link: "공지 링크", role: "배역명", genre: "장르",
+  actor: "배우명", link: "공지 링크", role: "배역명", genre: "장르", age: "관람등급", run: "러닝타임",
 };
-export const ORDER: RowField[] = ["title", "venue", "start", "end", "date", "time", "actor", "link", "role", "genre"]; // 양식의 열 순서(A~J)
+export const ORDER: RowField[] = ["title", "venue", "start", "end", "date", "time", "actor", "link", "role", "genre", "age", "run"]; // 양식의 열 순서(A~L). A~J는 그대로이고 K·L(관람등급·러닝타임)을 뒤에 붙였어요
 const REQUIRED: RowField[] = ["title", "venue", "start", "end", "date", "time", "actor"];
 
 const ALIASES: Record<RowField, string[]> = {
@@ -33,6 +35,8 @@ const ALIASES: Record<RowField, string[]> = {
   link: ["공지링크", "링크", "예매링크", "예매처", "url", "공지url", "공지"],
   role: ["배역명", "배역", "역할", "역"],
   genre: ["장르", "분류"],
+  age: ["관람등급", "관람연령", "관람가", "연령", "관람나이", "등급"],
+  run: ["러닝타임", "런닝타임", "러닝타임분", "상영시간", "소요시간", "공연러닝타임"],
 };
 const normHeader = (s: string) => s.replace(/\([^)]*\)|（[^）]*）/g, "").replace(/[\s*＊:：]/g, "").toLowerCase();
 const HEADER_LOOKUP = new Map<string, RowField>();
@@ -62,7 +66,7 @@ export function parseSheetRows(sheet: SheetRow[], opts: { allowHeaderless?: bool
     id: i + 1, n: r.n,
     title: get(r.cells, "title"), venue: get(r.cells, "venue"), start: get(r.cells, "start"), end: get(r.cells, "end"),
     date: get(r.cells, "date"), time: get(r.cells, "time"), actor: get(r.cells, "actor"), link: get(r.cells, "link"),
-    role: get(r.cells, "role"), genre: get(r.cells, "genre"),
+    role: get(r.cells, "role"), genre: get(r.cells, "genre"), age: get(r.cells, "age"), run: get(r.cells, "run"),
   }));
 }
 
@@ -191,7 +195,7 @@ export interface AnalyzedRow {
 }
 export type ShowChoice = "existing" | "new";
 export interface ShowGroup {
-  key: string; title: string; venue: string; start: string; end: string; genre: string; link: string;
+  key: string; title: string; venue: string; start: string; end: string; genre: string; link: string; age: string; run: string;
   existingId: string | null; existingTitle: string; existingPeriod: string; periodMatch: boolean;
   mode: ShowChoice; rowIds: number[];
   rows: number; validRows: number; errorRows: number; newSessions: number; existingSessions: number;
@@ -204,6 +208,10 @@ export interface AnalyzeOptions { updateCast: boolean; choice: Record<string, Sh
 
 const periodText = (s: string, e: string) => (s || e ? `${s.replace(/-/g, ".")} ~ ${e.replace(/-/g, ".")}` : "기간 없음");
 
+/** 관람등급·러닝타임은 적은 글을 그대로 쓰되, 숫자만 적으면 화면에 쓰는 모양으로 맞춰요(8 → 만 8세, 100 → 100분). */
+const normAge = (v: string) => (/^\d{1,2}$/.test(v) ? `만 ${v}세` : v);
+const normRun = (v: string) => (/^\d{1,3}$/.test(v) ? `${v}분` : v);
+
 export function analyze(input: ImportRow[], shows: Show[], opt: AnalyzeOptions): Analysis {
   const out: AnalyzedRow[] = input.map((r) => ({
     id: r.id, n: r.n, raw: r, status: "new", errors: [], warns: [], notes: [], groupKey: "", title: r.title.trim(), date: "", time: "", cast: [], roleText: "",
@@ -211,7 +219,7 @@ export function analyze(input: ImportRow[], shows: Show[], opt: AnalyzeOptions):
   for (const r of out) if (opt.excluded.has(r.id)) r.status = "excluded"; // 제외한 행도 '공연장·기간 빈칸 채우기'의 출처로는 써요
 
   /* 1) 칸별 점검 */
-  type P = { venue: string; start: string; end: string; genre: string; link: string; actors: string[]; roles: string[] };
+  type P = { venue: string; start: string; end: string; genre: string; link: string; age: string; run: string; actors: string[]; roles: string[] };
   const parsed = new Map<number, P>();
   for (const r of out) {
     const raw = r.raw; const e = r.errors;
@@ -229,6 +237,9 @@ export function analyze(input: ImportRow[], shows: Show[], opt: AnalyzeOptions):
     if (roles.some((a) => a.length > 40)) e.push("배역명이 너무 길어요(40자 이내)");
     let genre = "";
     if (raw.genre.trim()) { const g = normGenre(raw.genre); if (g) genre = g; else e.push(`장르는 '뮤지컬' 또는 '연극'만 쓸 수 있어요: '${raw.genre}'`); }
+    let age = raw.age.trim(), run = raw.run.trim();
+    if (age.length > 30) { e.push("관람등급이 너무 길어요(30자 이내)"); age = ""; } else age = normAge(age);
+    if (run.length > 30) { e.push("러닝타임이 너무 길어요(30자 이내)"); run = ""; } else run = normRun(run);
     let link = raw.link.trim();
     if (link && !validLink(link)) { e.push(`공지 링크는 http:// 또는 https://로 시작하는 주소여야 해요: '${raw.link.slice(0, 40)}'`); link = ""; }
     if (roles.length && actors.length) {
@@ -236,7 +247,7 @@ export function analyze(input: ImportRow[], shows: Show[], opt: AnalyzeOptions):
       else if (roles.length !== actors.length) e.push(`배역명(${roles.length}개)과 배우명(${actors.length}명)의 개수가 달라요`);
     }
     if (new Set(actors.map(normKey)).size < actors.length) e.push("같은 배우가 한 칸에 두 번 적혀 있어요");
-    parsed.set(r.id, { venue, start, end, genre, link, actors, roles });
+    parsed.set(r.id, { venue, start, end, genre, link, age, run, actors, roles });
   }
 
   /* 2) 공연 묶음: 같은 공연명이면 비어 있는 공연장·기간·링크·장르를 첫 유효값으로 채워요 */
@@ -249,13 +260,13 @@ export function analyze(input: ImportRow[], shows: Show[], opt: AnalyzeOptions):
   for (const s of shows) showByKey.set(normKey(s.title), [...(showByKey.get(normKey(s.title)) ?? []), s]);
   const gInfo = new Map<string, { g: ShowGroup; show: Show | null; rows: AnalyzedRow[] }>();
   for (const [key, rows] of byKey) {
-    const first = <K extends "venue" | "start" | "end" | "genre" | "link">(k: K) => { for (const r of rows) { const v = parsed.get(r.id)![k]; if (v) return { v, n: r.n }; } return { v: "", n: 0 }; };
-    const venue = first("venue"), start = first("start"), end = first("end"), genre = first("genre"), link = first("link");
+    const first = <K extends "venue" | "start" | "end" | "genre" | "link" | "age" | "run">(k: K) => { for (const r of rows) { const v = parsed.get(r.id)![k]; if (v) return { v, n: r.n }; } return { v: "", n: 0 }; };
+    const venue = first("venue"), start = first("start"), end = first("end"), genre = first("genre"), link = first("link"), age = first("age"), run = first("run");
     for (const r of rows) {
       if (r.status === "excluded") continue;
       const p = parsed.get(r.id)!;
       const diff = (lbl: string, own: string, g: { v: string; n: number }) => { if (own && g.v && own !== g.v && g.n !== r.n) r.warns.push(`${lbl}이(가) ${g.n}행과 달라요 — ${g.n}행 값(${g.v})으로 등록돼요`); };
-      diff("공연장", p.venue, venue); diff("공연 시작일", p.start, start); diff("공연 종료일", p.end, end); diff("장르", p.genre, genre);
+      diff("공연장", p.venue, venue); diff("공연 시작일", p.start, start); diff("공연 종료일", p.end, end); diff("장르", p.genre, genre); diff("관람등급", p.age, age); diff("러닝타임", p.run, run);
       if (!venue.v) r.errors.push("공연장이 비어 있어요"); if (!start.v && !r.errors.some((x) => x.startsWith("공연 시작일"))) r.errors.push("공연 시작일이 비어 있어요");
       if (!end.v && !r.errors.some((x) => x.startsWith("공연 종료일"))) r.errors.push("공연 종료일이 비어 있어요");
       if (start.v && end.v && start.v > end.v) r.errors.push(`공연 시작일(${start.v})이 종료일(${end.v})보다 늦어요`);
@@ -268,7 +279,7 @@ export function analyze(input: ImportRow[], shows: Show[], opt: AnalyzeOptions):
     const title = rows[0].title;
     const liveRows = rows.filter((r) => r.status !== "excluded");
     const g: ShowGroup = {
-      key, title, venue: venue.v, start: start.v, end: end.v, genre: genre.v || ex?.genre || "뮤지컬", link: link.v,
+      key, title, venue: venue.v, start: start.v, end: end.v, genre: genre.v || ex?.genre || "뮤지컬", link: link.v, age: age.v, run: run.v,
       existingId: ex?.id ?? null, existingTitle: ex?.title ?? "", existingPeriod: ex ? periodText(ex.start, ex.end) : "", periodMatch: !!matchP,
       mode, rowIds: rows.map((r) => r.id), rows: rows.length, validRows: 0, errorRows: 0, newSessions: 0, existingSessions: 0,
     };
@@ -487,7 +498,7 @@ export function analyzeEvents(input: EventImportRow[], shows: Show[], existingEv
 /* ---------- DB 함수에 넘길 내용 ---------- */
 export interface SkippedItem { row: number; title: string; date: string; time: string; actor: string; reason: string }
 export interface ImportPayload {
-  shows: { key: string; title: string; mode: ShowChoice; show_id: string | null; force_new: boolean; venue: string; start: string; end: string; genre: string; link: string;
+  shows: { key: string; title: string; mode: ShowChoice; show_id: string | null; force_new: boolean; venue: string; start: string; end: string; genre: string; link: string; age: string; run: string;
     sessions: { date: string; time: string; cast: { role: string; actor: string }[] }[] }[];
   /** 이벤트: 이번에 함께 등록하는 공연이면 show_key, 이미 등록된 공연이면 show_id로 공연을 가리켜요. */
   events: { show_key: string | null; show_id: string | null; title: string; start: string; end: string }[];
@@ -509,7 +520,7 @@ export function buildPayload(a: Analysis | null, ea: EventAnalysis | null = null
     }
     shows.push({
       key: g.key, title: g.title, mode: g.mode, show_id: g.mode === "existing" ? g.existingId : null, force_new: g.mode === "new" && !!g.existingId,
-      venue: g.venue, start: g.start, end: g.end, genre: g.genre, link: g.link,
+      venue: g.venue, start: g.start, end: g.end, genre: g.genre, link: g.link, age: g.age, run: g.run,
       sessions: [...sess.values()].sort((x, y) => `${x.date} ${x.time}`.localeCompare(`${y.date} ${y.time}`)).map((s) => ({ date: s.date, time: s.time, cast: [...s.cast.values()] })),
     });
   }

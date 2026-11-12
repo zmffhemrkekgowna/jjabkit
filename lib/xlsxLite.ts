@@ -246,7 +246,7 @@ function sheetXml(rows: string[][], widths: number[], opts: { freeze?: boolean; 
   return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">${view}<cols>${cols}</cols><sheetData>${body}</sheetData></worksheet>`;
 }
 
-export const TEMPLATE_HEADERS = ["공연명", "공연장", "공연 시작일", "공연 종료일", "공연일", "공연 시간", "배우명", "공지 링크", "배역명", "장르"];
+export const TEMPLATE_HEADERS = ["공연명", "공연장", "공연 시작일", "공연 종료일", "공연일", "공연 시간", "배우명", "공지 링크", "배역명", "장르", "관람등급", "러닝타임"];
 export const EVENT_TEMPLATE_HEADERS = ["공연명", "이벤트명", "이벤트 시작일", "이벤트 종료일"];
 
 /** 업로드 양식(.xlsx)을 만들어요. '일정'·'이벤트' 시트는 머리글만 있고, '작성 안내' 시트에 설명과 예시가 있어요. */
@@ -264,9 +264,11 @@ export function buildTemplateXlsx(): Uint8Array {
     ["공지 링크", "예매처·공연 공지 URL(http:// 또는 https://로 시작). 같은 공연의 첫 행에만 적어도 돼요.", "선택", "https://example.com/notice"],
     ["배역명", "선택 칸. 적으면 그 배역에 배우가 들어가요. 배우가 여러 명이면 배우와 같은 순서·같은 개수로 쉼표로 구분하세요. 비워두면 이미 등록된 배우는 원래 배역으로, 처음 보는 배우는 '출연진 1, 2…' 배역으로 들어가요.", "선택", "댄버스 부인"],
     ["장르", "선택 칸. 뮤지컬 또는 연극. 비우면 신규 공연은 뮤지컬로 등록돼요.", "선택", "뮤지컬"],
-    ["작성 팁", "공연명은 모든 행에 적어 주세요. 공연장·공연 시작일·공연 종료일·공지 링크·장르는 같은 공연의 첫 행에만 적고 아래 행은 비워도 돼요(같은 공연명의 첫 값을 이어받아요). 한 줄에 회차 1개 + 배우 1명 이상. 같은 회차의 같은 배역에 서로 다른 배우를 넣으면 오류로 알려드려요.", "", ""],
-    ["일정 예시", "공연명 | 공연장 | 시작일 | 종료일 | 공연일 | 시간 | 배우명 | 공지 링크 | 배역명", "", ""],
-    ["", "레베카 | 샤롯데씨어터 | 2026-11-01 | 2026-12-31 | 2026-11-11 | 14:00 | 옥주현 | https://example.com | 댄버스 부인", "", ""],
+    ["관람등급", "선택 칸(K열). 만 8세, 만 12세, 전체관람가 처럼 적은 글 그대로 등록돼요. 숫자만 적으면(8) '만 8세'로 바뀌어요. 같은 공연의 첫 행에만 적어도 돼요. 새 공연은 그대로 저장되고, 이미 등록된 공연은 비어 있을 때만 채워요(이미 적힌 값은 바꾸지 않아요).", "선택", "만 8세"],
+    ["러닝타임", "선택 칸(L열). 100분, 2시간 30분 처럼 적은 글 그대로 등록돼요. 숫자만 적으면(100) '100분'으로 바뀌어요. 같은 공연의 첫 행에만 적어도 돼요. 이미 등록된 공연은 비어 있을 때만 채워요.", "선택", "100분"],
+    ["작성 팁", "공연명은 모든 행에 적어 주세요. 공연장·공연 시작일·공연 종료일·공지 링크·장르·관람등급·러닝타임은 같은 공연의 첫 행에만 적고 아래 행은 비워도 돼요(같은 공연명의 첫 값을 이어받아요). 한 줄에 회차 1개 + 배우 1명 이상. 같은 회차의 같은 배역에 서로 다른 배우를 넣으면 오류로 알려드려요.", "", ""],
+    ["일정 예시", "공연명 | 공연장 | 시작일 | 종료일 | 공연일 | 시간 | 배우명 | 공지 링크 | 배역명 | 장르 | 관람등급 | 러닝타임", "", ""],
+    ["", "레베카 | 샤롯데씨어터 | 2026-11-01 | 2026-12-31 | 2026-11-11 | 14:00 | 옥주현 | https://example.com | 댄버스 부인 | 뮤지컬 | 만 8세 | 100분", "", ""],
     ["", "레베카 | 샤롯데씨어터 | 2026-11-01 | 2026-12-31 | 2026-11-11 | 19:00 | 신영숙 | | 댄버스 부인", "", ""],
     ["", "", "", ""],
     ["[이벤트 시트]", "공연에 딸린 이벤트를 한 행에 하나씩 적어요. 이벤트만 따로 추가·등록할 수도 있어요(일정 시트는 비워 두어도 돼요).", "", ""],
@@ -282,7 +284,7 @@ export function buildTemplateXlsx(): Uint8Array {
     ["", "레베카 | 스페셜 포토타임 | 2026-12-01 | 2026-12-03", "", ""],
     ["", "프랑켄슈타인 | 관객 참여 이벤트 | 2026-12-05 | 2026-12-10", "", ""],
   ];
-  const sheet1 = sheetXml([TEMPLATE_HEADERS], [18, 18, 14, 14, 14, 12, 24, 30, 16, 10], { freeze: true, headerStyle: 1, textCols: true });
+  const sheet1 = sheetXml([TEMPLATE_HEADERS], [18, 18, 14, 14, 14, 12, 24, 30, 16, 10, 12, 12], { freeze: true, headerStyle: 1, textCols: true });
   const sheet2 = sheetXml([EVENT_TEMPLATE_HEADERS], [22, 28, 16, 16], { freeze: true, headerStyle: 1, textCols: true });
   const sheet3 = sheetXml(guide, [14, 90, 10, 24], { headerStyle: 1 });
   const ct = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/worksheets/sheet2.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/worksheets/sheet3.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/></Types>`;
