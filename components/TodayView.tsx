@@ -41,7 +41,6 @@ export default function TodayView({ shows, events = [], serverToday }: { shows: 
   const mine = useMySched();
   const fav = useFavorites();
   const sessionCount = slots.reduce((n, sl) => n + sl.rows.length, 0);
-  const band = (t: string) => { const h = Number(t.slice(0, 2)); return h < 12 ? "오전" : h < 17 ? "오후" : "저녁"; };
   const d = fromKey(date);
 
   return (
@@ -69,7 +68,7 @@ export default function TodayView({ shows, events = [], serverToday }: { shows: 
           <div aria-label="공연 목록" role="group" className="space-y-6">
             {slots.map(({ time, rows }) => (
               <section key={time} aria-label={`${time} 공연`}>
-                <p className="mb-2 flex items-baseline gap-2 text-xl font-medium tabular-nums">{time}<span className="text-xs font-normal text-mute">{band(time)}</span></p>
+                <p className="mb-2 flex items-baseline gap-2 text-xl font-medium tabular-nums">{time}</p>
                 <ul className="border border-line bg-card">
                   {rows.map(({ show, session: s }) => {
                     const evs = eventsForSession(events, show.id, date, s.time); // 이 공연의 이 회차(날짜+시간)에 실제로 적용되는 이벤트만(여러 개면 모두)
@@ -82,14 +81,14 @@ export default function TodayView({ shows, events = [], serverToday }: { shows: 
                         {/* 줄 전체를 누르면 회차 상세로. 이벤트 배지(링크)만 그 위에서 따로 눌려요. */}
                         <Link href={`/shows/${show.id}?d=${s.date}&s=${s.id}`} aria-label={`${show.title} ${s.time} 회차 상세`} className="absolute inset-0" />
                         {/* 왼쪽 열: 공연명(가로·세로 가운데). 폭은 화면의 약 30%, 좁은 화면에서도 너무 좁아지지 않게 하한을 둬요. 높이는 오른쪽과 같이 늘어나요. */}
-                        <div className="pointer-events-none flex w-[30%] min-w-[6.5rem] max-w-[13rem] shrink-0 items-center justify-center px-2.5 py-3 text-center sm:px-3" style={{ backgroundColor: bg, color: readableText(bg) }}>
-                          <h3 className="min-w-0 break-keep text-[15px] font-medium leading-snug [overflow-wrap:anywhere]">{show.title}{show.genre !== "뮤지컬" && <span className="ml-1 whitespace-nowrap text-xs font-normal opacity-80">- {show.genre}</span>}</h3>
+                        <div className="pointer-events-none flex w-[30%] min-w-[6.5rem] max-w-[13rem] shrink-0 items-center justify-center px-2.5 py-2.5 text-center sm:px-3" style={{ backgroundColor: bg, color: readableText(bg) }}>
+                          <h3 className="min-w-0 break-keep text-[15px] font-medium leading-snug [overflow-wrap:anywhere]">{show.title}</h3>
                         </div>
                         {/* 오른쪽 열: 이벤트 배지 → 배우 이름 순으로 한 흐름에서 줄바꿈돼요. */}
-                        <div className="pointer-events-none flex min-w-0 flex-1 items-center px-3 py-3">
-                          <p className={`min-w-0 flex-1 text-left text-sm leading-7 [overflow-wrap:anywhere] ${names.length ? "" : "text-mute"}`}>
+                        <div className="pointer-events-none flex min-w-0 flex-1 items-center px-3 py-2">
+                          <p className={`min-w-0 flex-1 text-left text-sm leading-6 [overflow-wrap:anywhere] ${names.length ? "" : "text-mute"}`}>
                             {evs.map((e) => {
-                              const cls = "mr-1.5 inline-block max-w-full break-words rounded bg-hit px-2 py-0.5 align-baseline text-[13px] font-medium leading-snug text-brand";
+                              const cls = "mr-1.5 my-0.5 inline-block max-w-full break-words rounded bg-hit px-2 py-0.5 align-baseline text-[13px] font-medium leading-snug text-brand";
                               return isHttpUrl(e.linkUrl)
                                 ? <a key={e.id} href={e.linkUrl} target="_blank" rel="noopener noreferrer" title="이벤트 공지 보기 (새 탭)" className={`${cls} pointer-events-auto relative z-10 underline-offset-2 hover:underline`}>{e.title}</a>
                                 : <span key={e.id} className={cls}>{e.title}</span>;
