@@ -22,6 +22,8 @@ function Hit({ text, q }: { text: string; q: string }) {
 }
 
 const CATS: ("전체" | Genre)[] = ["전체", "뮤지컬", "연극"];
+/** 처음 들어오면 '공연 중'만 보여요. 새로고침하면 다시 이 값으로 돌아와요(어디에도 저장하지 않아요). */
+const DEFAULT_ST: "전체" | ShowStatus = "running";
 const STATUS: { v: "전체" | ShowStatus; label: string }[] = [
   { v: "전체", label: "전체" }, { v: "running", label: "공연 중" }, { v: "upcoming", label: "개막 예정" }, { v: "ended", label: "종료" },
 ];
@@ -87,7 +89,7 @@ export default function ShowList({ shows }: { shows: Show[] }) {
   const today = useTodayKST(); // 자정이 지나면 상태 탭 분류도 저절로 바뀌어요
   const [q, setQ] = useState("");
   const [cat, setCat] = useState<"전체" | Genre>("전체");
-  const [st, setSt] = useState<"전체" | ShowStatus>("전체");
+  const [st, setSt] = useState<"전체" | ShowStatus>(DEFAULT_ST);
 
   const [sort, setSort] = useState<SortKey>("default");
   const rows = useMemo(() => {
@@ -97,8 +99,8 @@ export default function ShowList({ shows }: { shows: Show[] }) {
   const validIds = useMemo(() => new Set(shows.map((s) => s.id)), [shows]);
   const recent = useRecent(validIds);
   const recentShows = recent.ids.map((id) => shows.find((s) => s.id === id)).filter((s): s is Show => !!s);
-  const filtering = q.trim() !== "" || cat !== "전체" || st !== "전체";
-  const reset = () => { setQ(""); setCat("전체"); setSt("전체"); setSort("default"); };
+  const filtering = q.trim() !== "" || cat !== "전체" || st !== DEFAULT_ST;
+  const reset = () => { setQ(""); setCat("전체"); setSt(DEFAULT_ST); setSort("default"); };
 
   const rowLabel = "w-8 shrink-0 text-[11px] font-bold text-mute";
   const scroller = "flex min-w-0 flex-1 gap-2 overflow-x-auto py-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden";
@@ -198,8 +200,10 @@ export default function ShowList({ shows }: { shows: Show[] }) {
           </ul>
         ) : (
           <div className="rounded-2xl border border-line bg-card p-8 text-center">
-            <p className="text-sm text-mute">{shows.length === 0 ? "아직 등록된 공연이 없어요." : `‘${q.trim() || "조건"}’에 맞는 공연이 없어요. 공연명이나 배우 이름의 일부만 입력해 보세요.`}</p>
-            {shows.length > 0 && <button onClick={reset} className="mt-3 min-h-[44px] rounded-lg border border-line px-4 py-2 text-sm font-medium">검색 조건 초기화</button>}
+            <p className="text-sm text-mute">{shows.length === 0 ? "아직 등록된 공연이 없어요." : !filtering ? "지금 공연 중인 공연이 없어요." : `‘${q.trim() || "조건"}’에 맞는 공연이 없어요. 공연명이나 배우 이름의 일부만 입력해 보세요.`}</p>
+            {shows.length > 0 && (!filtering
+              ? <button onClick={() => setSt("전체")} className="mt-3 min-h-[44px] rounded-lg border border-line px-4 py-2 text-sm font-medium">전체 공연 보기</button>
+              : <button onClick={reset} className="mt-3 min-h-[44px] rounded-lg border border-line px-4 py-2 text-sm font-medium">검색 조건 초기화</button>)}
           </div>
         )}
         <div className="pt-6"><AdSenseBanner slot={ADSENSE_SLOT_LIST} label="목록 하단 광고" /></div>
