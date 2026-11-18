@@ -29,9 +29,9 @@ export default function EventSheet({ event, onClose }: { event: EventItem; onClo
               {sessionKeysText(event.sessionKeys).map((t) => <li key={t}>{t}</li>)}
             </ul>
           )}
-          {isHttpUrl(event.linkUrl)
-            ? <div><a href={event.linkUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 rounded-lg bg-brand px-3 py-2 text-sm font-medium text-onbrand">공지 보기<ExternalLink size={14} aria-hidden /></a></div>
-            : <p className="text-mute">연결된 공지가 없어요.</p>}
+          {isHttpUrl(event.linkUrl) && (
+            <div><a href={event.linkUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 rounded-lg bg-brand px-3 py-2 text-sm font-medium text-onbrand">공지 보기<ExternalLink size={14} aria-hidden /></a></div>
+          )}
         </div>
       </div>
     </div>
