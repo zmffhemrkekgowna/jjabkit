@@ -235,7 +235,7 @@ export default function ImportAdmin({ shows, events = [] }: { shows: Show[]; eve
           {evRows && <span className="text-xs text-mute">{evMeta?.sheet === "붙여넣기" ? `붙여넣은 이벤트 ${evRows.length}행을 분석했어요.` : `${evMeta?.name} 이벤트 시트 (${evRows.length}행)`}</span>}
         </div>
         {evError && <p role="alert" data-testid="import-event-error" className="mt-2 flex items-start gap-2 rounded-lg border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-950/30 dark:text-red-300"><AlertTriangle size={16} className="mt-0.5 shrink-0" aria-hidden />{evError}</p>}
-        <details className="mt-3 text-sm">
+        <details open className="mt-3 text-sm">
           <summary className="cursor-pointer text-xs text-mute">엑셀·CSV 파일로 올리기 (선택 — 양식의 ‘이벤트’ 시트도 함께 읽어요)</summary>
           <div className="mt-2 flex flex-wrap items-center gap-2">
             <input ref={fileRef} type="file" accept=".xlsx,.csv,.txt,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" onChange={(e) => void pick(e.target.files?.[0])} className="hidden" id="import-file" data-testid="import-file" />
