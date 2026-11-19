@@ -19,10 +19,11 @@ import StatsAdmin from "./StatsAdmin";
 import PagesAdmin from "./PagesAdmin";
 import ToastHost from "./ToastHost";
 import type { CustomPage, PageSlug, SitePage } from "@/types/page";
+import ActorRenameAdmin from "./ActorRenameAdmin";
 import type { Tab } from "@/lib/adminTabs";
 
 export type { Tab };
-const TABS: [Tab, string][] = [["shows", "공연 관리"], ["import", "엑셀 붙여넣기"], ["popups", "팝업 광고"], ["notices", "소식·공지"], ["pages", "안내 페이지"], ["backup", "백업·복구"], ["stats", "방문자 통계"]];
+const TABS: [Tab, string][] = [["shows", "공연 관리"], ["import", "엑셀 붙여넣기"], ["actors", "배우 이름 변경"], ["popups", "팝업 광고"], ["notices", "소식·공지"], ["pages", "안내 페이지"], ["backup", "백업·복구"], ["stats", "방문자 통계"]];
 
 export default function AdminPanel({ shows, notices, events, popups, pages, customPages = [], initialTab = "shows" }: { shows: Show[]; notices: Notice[]; events: EventItem[]; popups: Popup[]; pages: Record<PageSlug, SitePage & { custom: boolean }>; customPages?: CustomPage[]; initialTab?: Tab }) {
   const router = useRouter();
@@ -57,6 +58,7 @@ export default function AdminPanel({ shows, notices, events, popups, pages, cust
       {dirtyLabels && <p data-testid="dirty-banner" role="note" className="rounded-lg border border-brand bg-hit px-3 py-2 text-xs font-medium text-brand">저장하지 않은 입력이 있어요: {dirtyLabels}. 버튼을 눌러 저장하기 전에는 반영되지 않아요.</p>}
       {tab === "shows" && <ShowsAdmin shows={shows} events={events} onWriteNotice={writeNotice} onOpenImport={() => goTab("import")} />}
       {tab === "import" && <ImportAdmin shows={shows} events={events} />}
+      {tab === "actors" && <ActorRenameAdmin shows={shows} />}
       {tab === "popups" && <PopupsAdmin popups={popups} />}
       {tab === "notices" && <NoticesAdmin notices={notices} shows={shows} draft={draft} />}
       {tab === "pages" && <PagesAdmin pages={pages} customPages={customPages} />}
