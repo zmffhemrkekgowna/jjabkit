@@ -7,18 +7,10 @@ import SlotCard from "../casting/SlotCard";
 import { isHex6 } from "@/lib/color";
 import { candidatesFromImage, type Candidate } from "@/lib/posterColor";
 import { artChanges, type ArtDraft } from "@/lib/db/importArt";
+import { POSTER_ACCEPT, POSTER_LABEL, POSTER_MAX_MB, POSTER_TYPES, posterFileProblem, toStaticPoster } from "@/lib/posterFile";
 import { ghost, inp } from "./shared";
 
-export const POSTER_TYPES = ["image/jpeg", "image/png", "image/webp"];
-export const POSTER_MAX_MB = 8;
-/** JPG·JPEG·PNG·WEBP만, 8MB 이하. 문제가 있으면 안내 문구를, 괜찮으면 빈 문자열을 돌려줘요. */
-export function posterFileProblem(f: { name: string; type: string; size: number }): string {
-  const ext = (f.name.split(".").pop() || "").toLowerCase();
-  const okType = POSTER_TYPES.includes(f.type) || (!f.type && ["jpg", "jpeg", "png", "webp"].includes(ext));
-  if (!okType || !["jpg", "jpeg", "png", "webp"].includes(ext)) return "JPG·JPEG·PNG·WEBP 이미지 파일만 올릴 수 있어요.";
-  if (f.size > POSTER_MAX_MB * 1024 * 1024) return `이미지가 너무 커요. ${POSTER_MAX_MB}MB 이하로 줄여서 올려 주세요.`;
-  return "";
-}
+export { POSTER_TYPES, POSTER_MAX_MB, posterFileProblem };
 
 const normHex = (v: string) => {
   const t = v.trim().replace(/^#/, "");
@@ -71,15 +63,18 @@ export default function ImportArt({ title, current, draft, onChange }: Props) {
     } finally { setExtracting(false); }
   };
 
-  const pick = (f: File | undefined | null) => {
+  const pick = async (f: File | undefined | null) => {
     if (!f) return;
     const p = posterFileProblem(f);
     if (p) { setMsg(p); return; }
-    setMsg(""); setCands(null);
-    onChange({ ...draft, file: f, removePoster: false });
-    void extract(f); // 올리자마자 후보를 보여 줘요. 적용은 관리자가 직접 눌러야 해요.
+    let file: File;
+    try { file = await toStaticPoster(f); } // GIF → 첫 프레임 PNG. 미리보기도 이 정지 이미지로 보여요.
+    catch (e) { setMsg(e instanceof Error ? e.message : "이미지를 처리하지 못했어요."); return; }
+    setMsg(file !== f ? "GIF는 첫 번째 프레임만 쓰는 정지 포스터로 올려요." : ""); setCands(null);
+    onChange({ ...draft, file, removePoster: false });
+    void extract(file); // 올리자마자 후보를 보여 줘요. 적용은 관리자가 직접 눌러야 해요.
   };
-  const onDrop = (e: DragEvent) => { e.preventDefault(); setDrag(false); pick(e.dataTransfer.files?.[0]); };
+  const onDrop = (e: DragEvent) => { e.preventDefault(); setDrag(false); void pick(e.dataTransfer.files?.[0]); };
   const removePoster = () => {
     setCands(null); setMsg("");
     if (draft.file) onChange({ ...draft, file: undefined });
@@ -111,9 +106,9 @@ export default function ImportArt({ title, current, draft, onChange }: Props) {
               onDragOver={(e) => { e.preventDefault(); setDrag(true); }} onDragLeave={() => setDrag(false)} onDrop={onDrop}
               data-testid="art-drop" data-drag={drag ? "1" : "0"}
               className={`rounded-xl border-2 border-dashed p-3 text-sm ${drag ? "border-brand bg-hit" : "border-line bg-bg"}`}>
-              <p className="text-xs text-mute">포스터 이미지를 여기로 끌어다 놓거나 파일을 골라 주세요. (JPG·JPEG·PNG·WEBP, {POSTER_MAX_MB}MB 이하)</p>
+              <p className="text-xs text-mute">포스터 이미지를 여기로 끌어다 놓거나 파일을 골라 주세요. ({POSTER_LABEL}, {POSTER_MAX_MB}MB 이하 · GIF는 첫 장면만 정지 이미지로 올라가요)</p>
               <div className="mt-2 flex flex-wrap items-center gap-2">
-                <input ref={fileRef} type="file" accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp" hidden data-testid="art-file" onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; pick(f); }} />
+                <input ref={fileRef} type="file" accept={POSTER_ACCEPT} hidden data-testid="art-file" onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; void pick(f); }} />
                 <button type="button" onClick={() => fileRef.current?.click()} className={ghost} data-testid="art-pick"><ImagePlus size={14} aria-hidden />{posterShown ? "다른 이미지로 교체" : "파일 선택"}</button>
                 {(draft.file || (current?.img && !draft.removePoster)) && (
                   <button type="button" onClick={removePoster} className={ghost} data-testid="art-remove"><Trash2 size={14} aria-hidden />{draft.file ? "선택 취소" : "포스터 삭제"}</button>
