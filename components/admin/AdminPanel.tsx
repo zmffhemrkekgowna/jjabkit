@@ -47,10 +47,10 @@ export default function AdminPanel({ shows, notices, events, popups, pages, cust
         <h1 className="font-serif text-xl font-bold">관리자</h1>
         <button onClick={logout} className={ghost}><LogOut size={14} aria-hidden />로그아웃</button>
       </div>
-      <nav role="tablist" aria-label="관리 메뉴" className="flex overflow-x-auto border-b border-line">
+      <nav role="tablist" aria-label="관리 메뉴" className="grid grid-cols-2 gap-x-2 gap-y-1 sm:grid-cols-4">
         {TABS.map(([id, label]) => (
           <button key={id} role="tab" aria-selected={tab === id} onClick={() => goTab(id)}
-            className={`-mb-px shrink-0 whitespace-nowrap border-b-2 px-4 py-2.5 text-sm font-bold ${tab === id ? "border-brand text-brand" : "border-transparent text-mute"}`}>
+            className={`flex min-h-[44px] min-w-0 items-center justify-center break-keep border-b-2 px-2 py-2.5 text-center text-sm font-bold leading-tight [overflow-wrap:anywhere] ${tab === id ? "border-brand text-brand" : "border-line text-mute hover:text-ink"}`}>
             {label}
           </button>
         ))}
