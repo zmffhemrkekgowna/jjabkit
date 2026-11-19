@@ -19,8 +19,9 @@ export function searchShows(shows: Show[], q: string): SearchRow[] {
     const seen = new Set<string>();
     const actors: ActorHit[] = [];
     for (const r of show.roles) for (const a of r.actors) {
-      const key = a.n + "\u0000" + r.name;
-      if (norm(a.n).includes(k) && !seen.has(key)) { seen.add(key); actors.push({ name: a.n, role: r.name }); }
+      const role = show.genre === "콘서트" ? "" : r.name; // 콘서트의 배역은 출연 슬롯이라 이름을 보여주지 않아요
+      const key = a.n + "\u0000" + role;
+      if (norm(a.n).includes(k) && !seen.has(key)) { seen.add(key); actors.push({ name: a.n, role }); }
     }
     if (titleHit || show.genre.includes(q.trim()) || actors.length > 0) out.push({ show, actors, titleHit });
   }

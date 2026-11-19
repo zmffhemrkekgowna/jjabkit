@@ -18,20 +18,20 @@ export default function CastFilter({ idx, sel, toggle, selectMany, reset, only, 
   const [onlySel, setOnlySel] = useState(false);
   const [closedRoles, setClosedRoles] = useState<Set<string>>(new Set());
   // 이 공연에 출연하는 관심 배우(이름이 같은 배우 포함)
-  const favIds = idx.roles.flatMap((r) => r.actors).filter((a) => fav.actors.has(a.n)).map((a) => a.id);
+  const favIds = idx.filterRoles.flatMap((r) => r.actors).filter((a) => fav.actors.has(a.n)).map((a) => a.id);
   const selected = useMemo(() => [...sel].map((id) => actorOf(idx, id)).filter((a) => a.id), [sel, idx]);
   const dirty = sel.size > 0 || only || onlySel;
   const resetAll = () => { reset(); setOnlySel(false); };
   const toggleRole = (id: string) => setClosedRoles((p) => { const n = new Set(p); if (n.has(id)) n.delete(id); else n.add(id); return n; });
 
   // '선택만 보기'일 때는 선택한 배우만 남기고, 남는 배우가 없는 배역은 숨겨요.
-  const roles = idx.roles
+  const roles = idx.filterRoles
     .map((r) => ({ r, actors: r.actors.filter((a) => !onlySel || sel.has(a.id)) }))
     .filter((x) => x.actors.length > 0);
 
   return (
     <section aria-label="배우 필터" className="rounded-2xl border border-line bg-card p-3 sm:p-4 lg:p-6">
-      {idx.roles.length === 0 && <p className="text-sm text-mute">등록된 배역이 없어요. 관리자에서 배역과 배우를 추가하면 여기서 고를 수 있어요.</p>}
+      {idx.roles.length === 0 && <p className="text-sm text-mute">{idx.concert ? "등록된 출연진이 없어요. 관리자에서 출연진을 추가하면 여기서 고를 수 있어요." : "등록된 배역이 없어요. 관리자에서 배역과 배우를 추가하면 여기서 고를 수 있어요."}</p>}
 
       {idx.roles.length > 0 && (
         <div className="flex items-center gap-2">
@@ -54,7 +54,7 @@ export default function CastFilter({ idx, sel, toggle, selectMany, reset, only, 
           {selected.map((a) => (
             <li key={a.id}>
               <button onClick={() => toggle(a.id)} aria-label={`${a.n} 선택 해제`} className="inline-flex min-h-[36px] items-center gap-1 rounded-full bg-brand px-3 text-sm text-onbrand lg:min-h-[44px] lg:px-4 lg:text-base">
-                {a.n}<span className="opacity-80">({idx.roles.find((r) => r.id === a.roleId)?.name})</span><X size={12} aria-hidden />
+                {a.n}{!idx.concert && <span className="opacity-80">({idx.roles.find((r) => r.id === a.roleId)?.name})</span>}<X size={12} aria-hidden />
               </button>
             </li>
           ))}
@@ -123,12 +123,12 @@ export default function CastFilter({ idx, sel, toggle, selectMany, reset, only, 
       </div>
       {sel.size > 0 && hits === 0 && (
         <p role="status" className="mt-2 rounded-lg bg-bg p-2 text-sm lg:p-3 lg:text-base">
-          선택한 배우가 모두 함께 출연하는 회차가 없어요. 같은 배역이 아닌 배우끼리는 한 회차에 같이 서야 해요. 배우를 줄이거나 <button onClick={reset} className="font-bold text-brand underline">초기화</button>해 보세요.
+          선택한 배우가 모두 함께 출연하는 회차가 없어요. {idx.concert ? "고른 배우가 모두 한 회차에 같이 서야 해요." : "같은 배역이 아닌 배우끼리는 한 회차에 같이 서야 해요."} 배우를 줄이거나 <button onClick={reset} className="font-bold text-brand underline">초기화</button>해 보세요.
         </p>
       )}
       {sel.size > 0 && (
         <p className="mt-2 text-xs leading-relaxed text-mute lg:text-sm">
-          다른 배역의 배우를 함께 고르면 모두 출연하는 회차만, 같은 배역에서 여러 명을 고르면 그중 한 명이라도 출연하는 회차가 표시돼요.
+          {idx.concert ? "배우를 여러 명 고르면 모두 함께 출연하는 회차만 표시돼요." : "다른 배역의 배우를 함께 고르면 모두 출연하는 회차만, 같은 배역에서 여러 명을 고르면 그중 한 명이라도 출연하는 회차가 표시돼요."}
         </p>
       )}
     </section>

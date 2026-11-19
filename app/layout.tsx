@@ -16,7 +16,7 @@ import { phaseOf } from "@/lib/period";
 import { createClient } from "@/lib/supabase/server";
 import { siteUrl } from "@/lib/site";
 
-export const metadata: Metadata = { metadataBase: siteUrl(), title: "JJabKit - 짭킷", description: "뮤지컬·연극 캐스팅 스케줄", openGraph: { title: "JJabKit - 짭킷", description: "뮤지컬·연극 캐스팅 스케줄", siteName: "JJabKit", type: "website" } };
+export const metadata: Metadata = { metadataBase: siteUrl(), title: "JJabKit - 짭킷", description: "뮤지컬·연극·콘서트 캐스팅 스케줄", openGraph: { title: "JJabKit - 짭킷", description: "뮤지컬·연극 캐스팅 스케줄", siteName: "JJabKit", type: "website" } };
 
 /** 소식·팝업은 보조 정보라서 조회가 실패해도 사이트 전체를 막지 않아요. 대신 서버 로그에 남겨요(DbError가 이미 남겨요). */
 const softFail = <T,>(fallback: T) => (e: unknown) => { console.error("[layout] 보조 데이터 조회 실패:", e instanceof Error ? e.message : e); return fallback; };

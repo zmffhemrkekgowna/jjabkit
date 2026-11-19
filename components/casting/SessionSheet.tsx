@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import { CalendarCheck, CalendarPlus, Clock, X } from "lucide-react";
-import { actorOf, fmtDate, fromKey, matches, visibleOn, type ShowIndex } from "@/lib/casting";
+import { actorOf, canonSel, castRows, fmtDate, fromKey, matches, visibleOn, type ShowIndex } from "@/lib/casting";
 import { useFavorites } from "@/lib/favorites";
 import { useMySched } from "@/lib/mySched";
 import { useDialogFocus } from "@/lib/useDialogFocus";
@@ -26,6 +26,7 @@ export default function SessionSheet({ idx, date, focusId, sel, only, toggle, on
   useDialogFocus(dialogRef, onClose, closeRef); // 포커스 이동·가두기·Esc·배경 스크롤 방지·닫을 때 포커스 복귀
   useEffect(() => { if (focusId) document.getElementById(`sess-${focusId}`)?.scrollIntoView({ block: "nearest" }); }, [focusId]);
 
+  const selC = canonSel(idx, sel);
   const list = favMode ? idx.byDate.get(date) ?? [] : visibleOn(idx, date, sel, only);
   const title = fmtDate(fromKey(date));
 
@@ -48,7 +49,7 @@ export default function SessionSheet({ idx, date, focusId, sel, only, toggle, on
 
         <div className="space-y-3 px-4 pt-1">
           {list.map((s) => {
-            const ok = sel.size > 0 && (favMode ? idx.roles.some((r) => sel.has(s.cast[r.id])) : matches(idx, s, sel));
+            const ok = sel.size > 0 && (favMode ? castRows(idx, s).some((x) => selC.has(x.a.id)) : matches(idx, s, sel));
             return (
               <article key={s.id} id={`sess-${s.id}`}
                 className={`rounded-2xl border p-3 ${ok ? "border-brand bg-hit" : "border-line"} ${s.id === focusId ? "ring-2 ring-brand" : ""}`}>
@@ -59,17 +60,16 @@ export default function SessionSheet({ idx, date, focusId, sel, only, toggle, on
                   {ok && <span className="rounded-full bg-brand px-2 py-0.5 text-xs font-medium text-onbrand">{favMode ? "관심 배우 출연" : "선택 조건 일치"}</span>}
                 </div>
                 <ul className="grid gap-1">
-                  {idx.roles.map((r) => {
-                    const a = actorOf(idx, s.cast[r.id]);
-                    const on = sel.has(a.id);
+                  {castRows(idx, s).map(({ key, role, a }) => {
+                    const on = selC.has(a.id);
                     return (
-                      <li key={r.id} className={`flex items-center rounded-xl pr-1 ${on ? "bg-brand text-onbrand" : "hover:bg-bg"}`}>
+                      <li key={key} className={`flex items-center rounded-xl pr-1 ${on ? "bg-brand text-onbrand" : "hover:bg-bg"}`}>
                         <button onClick={() => !favMode && a.id && toggle(a.id)} aria-pressed={on}
                           className="flex min-w-0 flex-1 items-center gap-3 rounded-xl px-2 py-1.5 text-left">
                           <Avatar name={a.n} size={38} />
                           <span className="min-w-0 flex-1">
                             <span className="block text-sm font-bold">{a.n}</span>
-                            <span className={`block truncate text-xs ${on ? "opacity-80" : "text-mute"}`}>{r.name}</span>
+                            {role && <span className={`block truncate text-xs ${on ? "opacity-80" : "text-mute"}`}>{role.name}</span>}
                           </span>
                           {!favMode && a.id && <span className={`shrink-0 text-xs ${on ? "" : "text-mute"}`}>{on ? "선택됨" : "+ 필터"}</span>}
                         </button>

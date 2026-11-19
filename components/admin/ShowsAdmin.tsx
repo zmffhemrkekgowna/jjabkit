@@ -13,6 +13,7 @@ import { confirmDiscard } from "./dirty";
 import { btn, ghost, inp, useAdminRun } from "./shared";
 import ShowForm from "./ShowForm";
 import RolesEditor from "./RolesEditor";
+import ConcertCastEditor from "./ConcertCastEditor";
 import SessionsEditor from "./SessionsEditor";
 import ShowEventsEditor from "./ShowEventsEditor";
 
@@ -119,7 +120,7 @@ export default function ShowsAdmin({ shows, events, onWriteNotice, onOpenImport 
       {/* key를 공연 id로 두어 공연을 바꾸면 입력 상태가 초기화돼요 */}
       <ShowForm key={`f-${show.id}`} show={show} run={run} />
       <ShowEventsEditor key={`e-${show.id}`} show={show} events={evOf(show.id)} run={run} />
-      <RolesEditor key={`r-${show.id}`} show={show} run={run} />
+      {show.genre === "콘서트" ? <ConcertCastEditor key={`r-${show.id}`} show={show} run={run} /> : <RolesEditor key={`r-${show.id}`} show={show} run={run} />}
       <SessionsEditor key={`s-${show.id}`} show={show} events={evOf(show.id)} run={run} notify={setMsg} />
     </div>
   );

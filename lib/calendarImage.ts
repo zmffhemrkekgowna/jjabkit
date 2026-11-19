@@ -1,4 +1,4 @@
-import { DOW, actorOf, addDays, matches, toKey, visibleOn, type ShowIndex } from "./casting";
+import { DOW, actorOf, castRows, addDays, matches, toKey, visibleOn, type ShowIndex } from "./casting";
 import type { MyItem } from "./mySchedule";
 import { showColor } from "./mySchedule";
 import { isHex6, readableText } from "./color";
@@ -31,7 +31,7 @@ export function castingSpec(showTitle: string, idx: ShowIndex, cursor: Date, sel
       day: day.getDate(), inMonth, dow: day.getDay(),
       entries: list.map((s) => ({
         time: s.time,
-        text: idx.roles.slice(0, 3).map((r) => actorOf(idx, s.cast[r.id]).n).join(", ") + (idx.roles.length > 3 ? " …" : ""),
+        text: (() => { const rows = castRows(idx, s); return rows.slice(0, 3).map((x) => x.a.n).join(", ") + (rows.length > 3 ? " …" : ""); })(),
         hit: sel.size > 0 && matches(idx, s, sel),
         star: s.curtain,
         fill: color,

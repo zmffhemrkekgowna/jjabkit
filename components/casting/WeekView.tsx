@@ -1,6 +1,6 @@
 "use client";
 
-import { actorOf, addDays, fmtDate, matches, toKey, visibleOn, weekStart, type ShowIndex } from "@/lib/casting";
+import { castRows, addDays, fmtDate, matches, toKey, visibleOn, weekStart, type ShowIndex } from "@/lib/casting";
 import { CurtainTag } from "../ui/Tags";
 
 interface Props { idx: ShowIndex; cursor: Date; sel: Set<string>; only: boolean; onOpen: (date: string, sid?: string) => void }
@@ -28,11 +28,10 @@ export default function WeekView({ idx, cursor, sel, only, onOpen }: Props) {
                       {s.curtain && <CurtainTag />}
                     </div>
                     <div className="grid grid-cols-2 gap-x-3 gap-y-0.5 text-sm">
-                      {idx.roles.map((r) => {
-                        const a = actorOf(idx, s.cast[r.id]);
+                      {castRows(idx, s).map(({ key, role, a }) => {
                         return (
-                          <span key={r.id} className={sel.has(a.id) ? "font-bold text-brand" : ""}>
-                            <span className="mr-1 text-xs text-mute">{r.short}</span>{a.n}
+                          <span key={key} className={sel.has(a.id) ? "font-bold text-brand" : ""}>
+                            {role && <span className="mr-1 text-xs text-mute">{role.short}</span>}{a.n}
                           </span>
                         );
                       })}

@@ -1,7 +1,7 @@
 "use client";
 
 import { CalendarDays, ChevronRight } from "lucide-react";
-import { actorOf, fmtDate, fromKey, matches, visibleOn, type ShowIndex } from "@/lib/casting";
+import { actorOf, castRows, fmtDate, fromKey, matches, visibleOn, type ShowIndex } from "@/lib/casting";
 import { CurtainTag } from "../ui/Tags";
 import type { EventItem } from "@/types/event";
 import { eventApplies, usableEvent } from "@/lib/eventScope";
@@ -60,11 +60,10 @@ export default function DayPanel({ idx, date, sel, only, events = [], onOpen, on
                       ))}
                     </span>
                     <span className="grid grid-cols-1 gap-x-4 gap-y-0.5 text-sm min-[480px]:grid-cols-2 lg:grid-cols-1">
-                      {idx.roles.map((r) => {
-                        const a = actorOf(idx, s.cast[r.id]);
+                      {castRows(idx, s).map(({ key, role, a }) => {
                         return (
-                          <span key={r.id} className={`flex min-w-0 gap-1.5 ${sel.has(a.id) ? "font-bold text-brand" : ""}`}>
-                            <span className="w-14 shrink-0 break-keep text-xs leading-5 text-mute">{r.short || r.name}</span>
+                          <span key={key} className={`flex min-w-0 gap-1.5 ${sel.has(a.id) ? "font-bold text-brand" : ""}`}>
+                            {role && <span className="w-14 shrink-0 break-keep text-xs leading-5 text-mute">{role.short || role.name}</span>}
                             <span className="min-w-0 break-words">{a.n}</span>
                           </span>
                         );

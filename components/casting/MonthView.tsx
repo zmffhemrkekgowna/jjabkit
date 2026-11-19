@@ -1,7 +1,7 @@
 "use client";
 
 import SlotCard from "./SlotCard";
-import { DOW, actorOf, addDays, fmtDate, matches, toKey, visibleOn, type ShowIndex } from "@/lib/casting";
+import { DOW, actorOf, castRows, addDays, fmtDate, matches, toKey, visibleOn, type ShowIndex } from "@/lib/casting";
 import type { EventItem } from "@/types/event";
 import { isHex6, readableOn } from "@/lib/color";
 
@@ -83,7 +83,7 @@ export default function MonthView({ idx, cursor, sel, only, today, events = [], 
                         {lanes > 0 && <span aria-hidden style={{ height: `calc(${lanes} * var(--lane))` }} className="block shrink-0" />}
                         {list.map((s) => {
                           const ok = sel.size > 0 && matches(idx, s, sel);
-                          const all = idx.roles.map((r) => actorOf(idx, s.cast[r.id]).n);
+                          const all = castRows(idx, s).map((x) => x.a.n);
                           return <SlotCard key={s.id} color={color} time={s.time} star={s.curtain} all={all} state={sel.size > 0 ? (ok ? "hit" : "dim") : "normal"} onClick={() => onOpen(k, s.id)} ariaLabel={`${fmtDate(day)} ${s.time} ${all.join(", ")}, 전체 출연진 보기`} />;
                         })}
                       </div>

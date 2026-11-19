@@ -21,7 +21,7 @@ function Hit({ text, q }: { text: string; q: string }) {
   return <>{a}{m && <mark className="rounded-sm bg-hit px-0.5 font-bold text-brand">{m}</mark>}{b}</>;
 }
 
-const CATS: ("전체" | Genre)[] = ["전체", "뮤지컬", "연극"];
+const CATS: ("전체" | Genre)[] = ["전체", "뮤지컬", "연극", "콘서트"];
 /** 처음 들어오면 '공연 중'만 보여요. 새로고침하면 다시 이 값으로 돌아와요(어디에도 저장하지 않아요). */
 const DEFAULT_ST: "전체" | ShowStatus = "running";
 const STATUS: { v: "전체" | ShowStatus; label: string }[] = [
@@ -183,7 +183,7 @@ export default function ShowList({ shows }: { shows: Show[] }) {
                     {actors.length > 0 && (
                       <span className="mt-1 block break-words text-xs font-normal text-mute" aria-label="검색과 일치한 배우">
                         {actors.slice(0, 3).map((a, i) => (
-                          <Fragment key={a.name + a.role}>{i > 0 && " · "}<Hit text={a.name} q={q} /> <span className="opacity-80">({a.role})</span></Fragment>
+                          <Fragment key={a.name + a.role}>{i > 0 && " · "}<Hit text={a.name} q={q} /> {a.role && <span className="opacity-80">({a.role})</span>}</Fragment>
                         ))}
                         {actors.length > 3 && ` 외 ${actors.length - 3}명`}
                       </span>

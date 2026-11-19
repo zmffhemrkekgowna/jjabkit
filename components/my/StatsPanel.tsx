@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { ChevronDown, Drama, Ticket, Trash2, Users, type LucideIcon } from "lucide-react";
 import { recId, unlinkedOf, useWatched } from "@/lib/watched";
-import { computeStats, type Count } from "@/lib/stats";
+import { UNCLASSIFIED, computeStats, type Count } from "@/lib/stats";
 
 /** 관극 대시보드 팔레트: 채도를 낮춘 파스텔. 버건디(브랜드색)는 '가장 많이'·1위 같은 포인트에만 써요. */
 const LAV = "#A99AE8", SKY = "#8DBCEB", MINT = "#83CBB5", PEACH = "#F2A98B", YEL = "#EBCB75";
@@ -12,6 +12,24 @@ const tint = (c: string, pct: number) => `color-mix(in srgb, ${c} ${pct}%, trans
 const WEEK = ["일", "월", "화", "수", "목", "금", "토"];
 
 /** 순위 막대: 1~3위는 서로 다른 파스텔, 나머지는 같은 계열의 연한 색. 1위 번호만 브랜드색이에요. */
+function GenreBars({ rows }: { rows: Count[] }) {
+  const m = Math.max(1, ...rows.map((r) => r.count));
+  const colorOf = (l: string) => (l === "뮤지컬" ? LAV : l === "연극" ? SKY : l === "콘서트" ? PEACH : "var(--mute)");
+  return (
+    <ul className="space-y-2">
+      {rows.map((r) => (
+        <li key={r.label} data-genre={r.label} className="flex items-center gap-2 text-sm">
+          <span className="w-16 shrink-0 font-semibold">{r.label}</span>
+          <span className="h-3.5 min-w-0 flex-1 overflow-hidden rounded-full" style={{ background: tint(colorOf(r.label), 14) }}>
+            <span className="block h-full rounded-full" style={{ width: `${(r.count / m) * 100}%`, background: colorOf(r.label) }} />
+          </span>
+          <span className="w-10 shrink-0 text-right font-semibold tabular-nums">{r.count}<span className="text-xs font-normal text-mute">회</span></span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 function RankBars({ rows, unit = "회", colors }: { rows: Count[]; unit?: string; colors: [string, string, string] }) {
   const m = Math.max(1, ...rows.map((r) => r.count));
   return (
@@ -70,16 +88,17 @@ function StatCard({ label, value, unit, color, Icon, className = "" }: { label: 
 const card = "rounded-2xl border border-line bg-card p-4";
 
 /** 관극 통계: '관극 완료'로 직접 표시한 회차만 세요. 관심 배우의 출연 일정이나 예정 일정은 들어가지 않아요. */
-export default function StatsPanel({ shows = [] }: { shows?: { id: string; title: string; sessions?: { id: string; date: string; time: string }[] }[] }) {
+export default function StatsPanel({ shows = [] }: { shows?: { id: string; title: string; genre?: string; sessions?: { id: string; date: string; time: string }[] }[] }) {
   const w = useWatched();
   const [year, setYear] = useState<string | "all">("");
   const [ask, setAsk] = useState<string | null>(null);
   // 펼친 달(YYYY-MM). 처음엔 모두 접혀 있고, 여러 달을 동시에 펼칠 수 있어요. 저장하지 않아요.
   const [openMonths, setOpenMonths] = useState<Set<string>>(new Set());
   const toggleMonth = (k: string) => setOpenMonths((p) => { const n = new Set(p); if (n.has(k)) n.delete(k); else n.add(k); return n; });
-  const all = useMemo(() => computeStats(w.records, "all"), [w.records]);
+  const genreByShowId = useMemo(() => new Map(shows.filter((s) => s.genre).map((s) => [s.id, s.genre as string])), [shows]);
+  const all = useMemo(() => computeStats(w.records, "all", genreByShowId), [w.records, genreByShowId]);
   const y = year && (year === "all" || all.years.includes(year)) ? year : all.years[0] ?? "all";
-  const st = useMemo(() => computeStats(w.records, y), [w.records, y]);
+  const st = useMemo(() => computeStats(w.records, y, genreByShowId), [w.records, y, genreByShowId]);
   const unlinked = useMemo(() => unlinkedOf(w.records, shows), [w.records, shows]);
 
   if (w.records.length === 0) {
@@ -140,6 +159,11 @@ export default function StatsPanel({ shows = [] }: { shows?: { id: string; title
       <section className={card} aria-label="연도별 누적">
         <h3 className="mb-3 font-bold">연도별 누적 관극 횟수</h3>
         <YearBars rows={all.yearTotals} />
+      </section>
+      <section className={card} aria-label="장르별 관극 횟수" data-testid="genre-stats">
+        <h3 className="mb-3 font-bold">장르별{y === "all" ? "" : ` · ${y}년`}</h3>
+        <GenreBars rows={st.byGenre} />
+        {st.byGenre.some((g) => g.label === UNCLASSIFIED) && <p className="mt-2 text-xs text-mute">미분류는 공연이 삭제돼 장르를 알 수 없는 예전 기록이에요. 전체 관극 횟수에는 포함돼요.</p>}
       </section>
       <div className="grid gap-4 lg:grid-cols-2">
         <section className={card} aria-label="공연별 관극 횟수"><h3 className="mb-3 font-bold">공연별</h3><RankBars rows={st.byShow.slice(0, 10)} colors={[LAV, SKY, MINT]} />{st.byShow.length > 10 && <p className="mt-2 text-xs text-mute">상위 10개만 보여요 (전체 {st.byShow.length}개)</p>}</section>

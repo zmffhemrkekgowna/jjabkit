@@ -113,9 +113,9 @@ export default function ShowForm({ show, run }: { show: Show; run: Run }) {
       <div className="mt-3 grid gap-3 sm:grid-cols-2">
         <Fld label="공연명" className="sm:col-span-2"><TextInput value={show.title} onCommit={(v) => upd({ title: v })} className={inp} /></Fld>
         <Fld label="장르">
-          <select value={show.genre} onChange={(e) => upd({ genre: e.target.value as Genre })} className={inp}><option value="뮤지컬">뮤지컬</option><option value="연극">연극</option></select>
+          <select value={show.genre} onChange={(e) => upd({ genre: e.target.value as Genre })} className={inp}><option value="뮤지컬">뮤지컬</option><option value="연극">연극</option><option value="콘서트">콘서트</option></select>
         </Fld>
-        <Fld label="극장"><TextInput value={show.venue} onCommit={(v) => upd({ venue: v })} className={inp} /></Fld>
+        <Fld label={show.genre === "콘서트" ? "공연 장소" : "극장"}><TextInput value={show.venue} onCommit={(v) => upd({ venue: v })} className={inp} /></Fld>
         <Fld label="지역"><TextInput value={show.region} onCommit={(v) => upd({ region: v })} className={inp} /></Fld>
         <Fld label="개막일"><input type="date" value={show.start} onChange={(e) => setDate("start", e.target.value)} max={show.end || undefined} aria-invalid={!!problem} className={inp} /></Fld>
         <Fld label="종료일"><input type="date" value={show.end} onChange={(e) => setDate("end", e.target.value)} min={show.start || undefined} aria-invalid={!!problem} className={inp} /></Fld>

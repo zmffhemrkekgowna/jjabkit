@@ -125,7 +125,7 @@ export default function MySchedCalendar({ items, now, today, onRemove, onOpenSes
         </section>
       )}
 
-      {detailItem && <DetailDialog item={detailItem} past={isPast(detailItem)} watched={isWatched(detailItem)} onToggleWatched={() => { const r = refOf(detailItem); if (isWatched(detailItem)) watched.unmark(r); else watched.mark({ ...r, actors: castNames(detailItem.show, detailItem.session) }); }} onClose={closeDetail} onRemove={onRemove} onOpenSession={onOpenSession} />}
+      {detailItem && <DetailDialog item={detailItem} past={isPast(detailItem)} watched={isWatched(detailItem)} onToggleWatched={() => { const r = refOf(detailItem); if (isWatched(detailItem)) watched.unmark(r); else watched.mark({ ...r, actors: castNames(detailItem.show, detailItem.session), genre: detailItem.show.genre }); }} onClose={closeDetail} onRemove={onRemove} onOpenSession={onOpenSession} />}
     </div>
   );
 }

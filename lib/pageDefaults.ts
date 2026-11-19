@@ -9,7 +9,7 @@ export const PAGE_DEFAULTS: Record<PageSlug, { title: string; body: string }> = 
   about: {
     title: "JJabKit(짭킷) 소개",
     body: `## 어떤 서비스인가요?
-JJabKit(짭킷)은 뮤지컬·연극의 캐스팅 스케줄을 달력으로 한눈에 보는 서비스예요. 보고 싶은 배우를 고르면 그 배우가 나오는 회차가 달력에 강조돼요.
+JJabKit(짭킷)은 뮤지컬·연극·콘서트의 캐스팅 스케줄을 달력으로 한눈에 보는 서비스예요. 보고 싶은 배우를 고르면 그 배우가 나오는 회차가 달력에 강조돼요.
 
 ## 주요 기능
 - 공연별 월간·주간 캐스팅 달력

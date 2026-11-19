@@ -12,9 +12,12 @@ import { isRealDate } from "./period";
  */
 export const WATCHED_KEY = "jjabkit-watched-v1";
 export const WATCHED_VERSION = 1;
+export const GENRES = ["뮤지컬", "연극", "콘서트"] as const;
 const MAX = 5000;
 
-export interface WatchedRecord { show: string; showId: string; /** 회차 id. 예전 기록·예전 백업에는 비어 있을 수 있어요 */ sessionId: string; date: string; time: string; actors: string[]; at: string }
+export interface WatchedRecord { show: string; showId: string; /** 회차 id. 예전 기록·예전 백업에는 비어 있을 수 있어요 */ sessionId: string; date: string; time: string; actors: string[]; at: string;
+  /** 관극 완료로 표시한 순간의 공연 장르(뮤지컬·연극·콘서트). 예전 기록에는 없어요(선택 항목이라 예전 기록·백업은 그대로 쓸 수 있어요). */
+  genre?: string }
 
 /** 같은 기록인지 가르는 식별자: 회차 id가 있으면 그것, 없으면 공연 id(없으면 공연명)+날짜+시간 */
 export const recId = (r: { sessionId?: string; showId?: string; show: string; date: string; time: string }) =>
@@ -52,6 +55,7 @@ export function cleanRecordsDetailed(raw: unknown): CleanResult {
       actors: (Array.isArray(r.actors) ? r.actors : []).filter((a): a is string => typeof a === "string" && a.length > 0 && a.length <= 50).slice(0, 30),
       at: typeof r.at === "string" ? r.at.slice(0, 40) : "",
     };
+    if (typeof r.genre === "string" && (GENRES as readonly string[]).includes(r.genre)) rec.genre = r.genre;
     if (!seen.has(recId(rec))) seen.set(recId(rec), rec);
   });
   return { records: [...seen.values()].sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time)), rejected, total: raw.length };

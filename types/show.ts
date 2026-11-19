@@ -1,5 +1,5 @@
 /** 프로토타입 화면이 쓰는 모양 그대로. DB 행은 lib/db/shows.ts에서 이 모양으로 바꿔요. */
-export type Genre = "뮤지컬" | "연극";
+export type Genre = "뮤지컬" | "연극" | "콘서트";
 /** 공연 상태는 저장하지 않고 개막일·종료일로 계산해요(lib/status.ts). */
 export type { ShowStatus as Status } from "@/lib/status";
 

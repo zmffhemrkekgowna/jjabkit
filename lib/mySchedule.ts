@@ -26,9 +26,15 @@ export function buildMySchedule(shows: Show[], names: Set<string>): MyItem[] {
 
 /** 배우 한 명(이름)이 출연하는 공연·배역과 회차 수 */
 export function appearancesOf(shows: Show[], name: string): Appearance[] {
-  return shows.flatMap((show) =>
-    show.roles.flatMap((r) =>
+  return shows.flatMap((show) => {
+    if (show.genre === "콘서트") { // 콘서트의 배역은 출연 슬롯이라, 슬롯 이름 대신 '콘서트 출연' 한 줄로 합치고 회차는 중복 없이 세요
+      const ids = show.roles.flatMap((r) => r.actors.filter((a) => a.n === name).map((a) => [r.id, a.id] as const));
+      if (ids.length === 0) return [];
+      return [{ show, roleName: "콘서트 출연", count: show.sessions.filter((s) => ids.some(([rid, aid]) => s.cast[rid] === aid)).length }];
+    }
+    return show.roles.flatMap((r) =>
       r.actors.filter((a) => a.n === name).map((a) => ({
         show, roleName: r.name, count: show.sessions.filter((s) => s.cast[r.id] === a.id).length,
-      }))));
+      })));
+  });
 }

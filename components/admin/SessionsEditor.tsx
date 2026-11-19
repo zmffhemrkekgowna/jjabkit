@@ -23,6 +23,41 @@ const castSelect = (r: Role, value: string, onChange: (v: string) => void, compa
   <CastField key={r.id} role={r} value={value} onChange={onChange} compact={compact} />
 );
 
+/**
+ * 새 회차 입력 칸에 보이는(저장될) 캐스팅. 직접 고른 슬롯(picked)은 그대로 두고, 나머지 슬롯은
+ * 연극·뮤지컬은 배역마다 첫 배우(예전과 같아요), 콘서트는 아직 쓰지 않은 출연자를 순서대로 넣어요(같은 사람이 두 슬롯에 들어가지 않아요).
+ */
+const effectiveCast = (show: Show, picked: Record<string, string>): Record<string, string> => {
+  if (show.genre !== "콘서트") return Object.fromEntries(show.roles.map((r) => [r.id, picked[r.id] ?? r.actors[0]?.id ?? ""]));
+  const out: Record<string, string> = {};
+  const used = new Set<string>();
+  for (const r of show.roles) if (picked[r.id] !== undefined) { out[r.id] = picked[r.id]; const n = r.actors.find((a) => a.id === picked[r.id])?.n.trim(); if (n) used.add(n); }
+  for (const r of show.roles) {
+    if (out[r.id] !== undefined) continue;
+    const a = r.actors.find((x) => !used.has(x.n.trim()));
+    out[r.id] = a?.id ?? ""; if (a) used.add(a.n.trim());
+  }
+  return out;
+};
+/**
+ * 슬롯 하나의 출연자를 바꿔요. 연극·뮤지컬은 그 배역만 바뀌어요(예전과 같아요).
+ * 콘서트에서 이미 다른 슬롯에 있는 사람을 고르면, 그 슬롯에는 방금 바꾼 슬롯에 있던 사람이 들어가요(서로 자리를 바꿔요).
+ * 같은 사람이 한 회차의 두 슬롯에 중복으로 들어가지 않게 하기 위해서예요.
+ */
+const placeActor = (show: Show, cast: Record<string, string>, roleId: string, actorId: string): Record<string, string> => {
+  const next = { ...cast, [roleId]: actorId };
+  if (show.genre !== "콘서트" || !actorId) return next;
+  const role = show.roles.find((r) => r.id === roleId);
+  const name = role?.actors.find((a) => a.id === actorId)?.n.trim();
+  const prevName = role?.actors.find((a) => a.id === cast[roleId])?.n.trim();
+  for (const o of show.roles) {
+    if (o.id === roleId) continue;
+    const cur = o.actors.find((a) => a.id === cast[o.id]);
+    if (cur && cur.n.trim() === name) next[o.id] = (prevName && o.actors.find((a) => a.n.trim() === prevName)?.id) || "";
+  }
+  return next;
+};
+
 const caption = (show: Show, s: Session) => {
   const nm = show.roles.map((r) => r.actors.find((a) => a.id === s.cast[r.id])?.n ?? "미정");
   return `${s.date.slice(5).replace("-", "/")}(${DOW[fromKey(s.date).getDay()]}) ${s.time} · ${nm.join("/")}`;
@@ -54,7 +89,7 @@ function SessionRow({ show, s, run, picked, onPick }: { show: Show; s: Session; 
         <div className="min-w-0 border-t border-line pt-3 sm:flex-1 sm:border-0 sm:p-0">
           <p className="mb-2 text-xs font-bold text-mute sm:hidden">캐스팅 <span className="font-normal">· 배우를 고르면 바로 저장돼요</span></p>
           <div className="grid grid-cols-1 gap-2 min-[480px]:grid-cols-2 sm:flex sm:flex-wrap sm:items-center sm:gap-x-3 sm:gap-y-1.5">
-            {show.roles.map((r) => castSelect(r, s.cast[r.id] ?? "", (v) => save({ cast: { ...s.cast, [r.id]: v } }), true))}
+            {show.roles.map((r) => castSelect(r, s.cast[r.id] ?? "", (v) => save({ cast: placeActor(show, s.cast, r.id, v) }), true))}
           </div>
         </div>
         {/* 3) 삭제: 모바일에서는 글자가 있는 붉은 버튼으로, 배우 선택과 구분해요 */}
@@ -249,7 +284,7 @@ export default function SessionsEditor({ show, events = [], run, notify }: { sho
 
   const add = async () => {
     if (!date || !dd.time) { notify("날짜와 시간을 입력해 주세요."); showToast("날짜와 시간을 입력해 주세요.", "error"); return; }
-    const cast = Object.fromEntries(show.roles.map((r) => [r.id, dd.cast[r.id] ?? r.actors[0]?.id ?? ""]));
+    const cast = effectiveCast(show, dd.cast);
     const ok = await run((db) => saveSession(db, show.id, { date, time: dd.time, cast, curtain: dd.curtain, timesale: dd.timesale }), `회차가 추가되었습니다. (${date} ${dd.time})`);
     if (ok) { setCursor(monthOf(date)); setSel(date); }
   };
@@ -337,7 +372,7 @@ export default function SessionsEditor({ show, events = [], run, notify }: { sho
         <div className="grid gap-2 sm:grid-cols-2">
           <Fld label="날짜"><input type="date" value={date} onChange={(e) => setDd({ ...dd, date: e.target.value })} className={inp} /></Fld>
           <Fld label="회차 시간"><TimeInput value={dd.time} onChange={(v) => setDd((d) => ({ ...d, time: v }))} label="회차 시간" /></Fld>
-          {show.roles.map((r) => castSelect(r, dd.cast[r.id] ?? r.actors[0]?.id ?? "", (v) => setDd({ ...dd, cast: { ...dd.cast, [r.id]: v } })))}
+          {(() => { const eff = effectiveCast(show, dd.cast); return show.roles.map((r) => castSelect(r, eff[r.id] ?? "", (v) => setDd({ ...dd, cast: placeActor(show, eff, r.id, v) }))); })()}
         </div>
         <div className="mt-3 flex flex-wrap items-center gap-4">
           <button onClick={add} className={`${btn} ml-auto`}><Plus size={14} aria-hidden />회차 추가</button>

@@ -181,7 +181,7 @@ export function normTime(raw: string): string | null {
 }
 
 const splitNames = (s: string) => s.split(/[,，、/;\n]+/).map((x) => x.trim()).filter(Boolean);
-const normGenre = (s: string): "뮤지컬" | "연극" | null => { const k = normKey(s); return k === "뮤지컬" || k === "musical" ? "뮤지컬" : k === "연극" || k === "play" ? "연극" : null; };
+const normGenre = (s: string): "뮤지컬" | "연극" | "콘서트" | null => { const k = normKey(s); return k === "뮤지컬" || k === "musical" ? "뮤지컬" : k === "연극" || k === "play" ? "연극" : k === "콘서트" || k === "concert" ? "콘서트" : null; };
 const validLink = (s: string) => /^https?:\/\/[^\s]+$/i.test(s) && s.length <= 500;
 const showRange = (a: string, b: string, c: string, d: string) => !!a && !!b && !!c && !!d && a <= d && c <= b;
 
@@ -236,7 +236,7 @@ export function analyze(input: ImportRow[], shows: Show[], opt: AnalyzeOptions):
     const roles = splitNames(raw.role);
     if (roles.some((a) => a.length > 40)) e.push("배역명이 너무 길어요(40자 이내)");
     let genre = "";
-    if (raw.genre.trim()) { const g = normGenre(raw.genre); if (g) genre = g; else e.push(`장르는 '뮤지컬' 또는 '연극'만 쓸 수 있어요: '${raw.genre}'`); }
+    if (raw.genre.trim()) { const g = normGenre(raw.genre); if (g) genre = g; else e.push(`장르는 '뮤지컬', '연극', '콘서트'만 쓸 수 있어요: '${raw.genre}'`); }
     let age = raw.age.trim(), run = raw.run.trim();
     if (age.length > 30) { e.push("관람등급이 너무 길어요(30자 이내)"); age = ""; } else age = normAge(age);
     if (run.length > 30) { e.push("러닝타임이 너무 길어요(30자 이내)"); run = ""; } else run = normRun(run);

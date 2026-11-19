@@ -97,7 +97,7 @@ export function parseBackup(text: string): ParseResult {
     const where = title ? `${w} '${title}'` : w;
 
     const genre = rs.genre === undefined ? "뮤지컬" : rs.genre;
-    if (genre !== "뮤지컬" && genre !== "연극") err(where, "장르는 '뮤지컬' 또는 '연극'이어야 해요.");
+    if (genre !== "뮤지컬" && genre !== "연극" && genre !== "콘서트") err(where, "장르는 '뮤지컬', '연극', '콘서트' 중 하나여야 해요.");
     const status = rs.status === undefined ? "upcoming" : rs.status;
     if (status !== "running" && status !== "upcoming") err(where, "상태는 'running' 또는 'upcoming'이어야 해요.");
     const start = str(rs.start, where, "시작일"), end = str(rs.end, where, "종료일");
