@@ -1,3 +1,4 @@
+import { posterTypeOf, toStaticPoster } from "@/lib/posterFile";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { DbError } from "./errors";
 import type { Genre, Session, SessionInput, Show, ShowPatch } from "@/types/show";
@@ -203,9 +204,11 @@ export async function restoreShowBundle(db: SupabaseClient, bundle: ShowBundle):
 
 /* ---------- 포스터 이미지 ---------- */
 export async function uploadPoster(db: SupabaseClient, showId: string, file: File): Promise<string> {
-  const ext = file.name.split(".").pop() || "jpg";
+  const f = await toStaticPoster(file); // GIF는 첫 프레임만 담은 PNG로 바꿔 올려요(움직이는 GIF는 저장하지 않아요)
+  const ext = (f.name.split(".").pop() || "jpg").toLowerCase();
   const path = `${showId}/${Date.now()}.${ext}`;
-  const { error } = await db.storage.from("posters").upload(path, file, { contentType: file.type, cacheControl: "31536000" });
+  const contentType = posterTypeOf(f) || "application/octet-stream";
+  const { error } = await db.storage.from("posters").upload(path, f, { contentType, cacheControl: "31536000" });
   if (error) throw new Error(error.message);
   return db.storage.from("posters").getPublicUrl(path).data.publicUrl;
 }
