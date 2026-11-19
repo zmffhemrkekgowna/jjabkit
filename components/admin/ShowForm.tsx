@@ -6,8 +6,9 @@ import { dateProblem, statusOf } from "@/lib/status";
 import { useTodayKST } from "@/lib/useToday";
 import { StatusTag } from "../ui/Tags";
 import { updateShow, uploadPoster } from "@/lib/db/shows";
+import { POSTER_ACCEPT, isGifFile, posterFileProblem } from "@/lib/posterFile";
 import Poster from "../ui/Poster";
-import { Fld, PALETTES, Sec, TextInput, inp, type Run } from "./shared";
+import { Fld, PALETTES, Sec, TextInput, inp, showToast, type Run } from "./shared";
 import SlotCard from "../casting/SlotCard";
 import { SHOW_COLORS, isHex6, readableText } from "@/lib/color";
 import { showColor } from "@/lib/mySchedule";
@@ -84,7 +85,10 @@ export default function ShowForm({ show, run }: { show: Show; run: Run }) {
     const f = e.target.files?.[0];
     e.target.value = "";
     if (!f) return;
-    run(async (db) => { const url = await uploadPoster(db, show.id, f); await updateShow(db, show.id, { img: url }); }, "포스터를 올렸어요.");
+    const p = posterFileProblem(f);
+    if (p) { showToast(p, "error"); return; }
+    // uploadPoster가 GIF를 첫 프레임 PNG로 바꿔서 올려요.
+    run(async (db) => { const url = await uploadPoster(db, show.id, f); await updateShow(db, show.id, { img: url }); }, isGifFile(f) ? "GIF의 첫 장면을 정지 포스터로 올렸어요." : "포스터를 올렸어요.");
   };
 
   return (
@@ -96,7 +100,7 @@ export default function ShowForm({ show, run }: { show: Show; run: Run }) {
             <TextInput value={show.img} onCommit={(v) => upd({ img: v.trim() })} placeholder="https://..." className={inp} />
           </Fld>
           <div className="flex flex-wrap items-center gap-2">
-            <input type="file" accept="image/*" onChange={onFile} aria-label="포스터 파일 올리기" className="min-h-[40px] min-w-0 max-w-full text-xs file:mr-2 file:min-h-[36px] file:rounded-lg file:border file:border-line file:bg-card file:px-3" />
+            <input type="file" accept={POSTER_ACCEPT} onChange={onFile} aria-label="포스터 파일 올리기" className="min-h-[40px] min-w-0 max-w-full text-xs file:mr-2 file:min-h-[36px] file:rounded-lg file:border file:border-line file:bg-card file:px-3" />
             {show.img && <button onClick={() => upd({ img: "" })} className="text-xs text-mute underline">이미지 제거</button>}
           </div>
           <div className="flex gap-2" role="group" aria-label="포스터 색상">

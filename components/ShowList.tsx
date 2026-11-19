@@ -1,5 +1,6 @@
 "use client";
 
+import StaticImg from "./ui/StaticImg";
 import UserDataSync from "./UserDataSync";
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
@@ -35,8 +36,7 @@ function Thumb({ show }: { show: Show }) {
   if (!show.img || bad) return null;
   return (
     <span className="my-2 ml-3 block h-14 w-10 shrink-0 overflow-hidden rounded-md border border-line bg-line">
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={show.img} alt="" loading="lazy" onError={() => setBad(true)} className="h-full w-full object-cover" />
+      <StaticImg src={show.img} alt="" loading="lazy" onError={() => setBad(true)} className="h-full w-full object-cover" />
     </span>
   );
 }
