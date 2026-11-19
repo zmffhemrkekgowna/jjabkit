@@ -4,6 +4,14 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { myTabOf, type MyTab } from "../BottomNav";
+
+
+
+
+
+
+
+
 import { CalendarPlus, ChevronLeft, ChevronRight, Heart, Search, Star, X } from "lucide-react";
 import type { Show } from "@/types/show";
 import { DOW, addDays, buildIndex, fmtDate, fromKey, toKey } from "@/lib/casting";
@@ -232,8 +240,8 @@ export default function MyPage({ shows }: { shows: Show[] }) {
                         const inMonth = day.getMonth() === cur.getMonth();
                         const list = inMonth ? byDate.get(k) ?? [] : [];
                         return (
-                          <div key={k} role="gridcell" className={`flex min-h-[4.75rem] min-w-0 flex-col gap-0.5 p-0.5 sm:min-h-[6.5rem] sm:gap-1 sm:p-1 ${!inMonth ? "bg-bg" : list.length ? "bg-hit" : "bg-card"}`}>
-                            <span className={`px-0.5 text-[11px] tabular-nums sm:text-xs ${!inMonth ? "opacity-30" : day.getDay() === 0 ? "text-brand" : ""}`}>{day.getDate()}</span>
+                          <div key={k} role="gridcell" className={`flex min-h-[4.75rem] min-w-0 flex-col gap-0.5 p-0.5 sm:min-h-[6.5rem] sm:gap-1 sm:p-1 ${inMonth ? "bg-card" : "bg-bg"}`}>
+                            <span className={`px-0.5 text-[11px] tabular-nums sm:text-xs ${!inMonth ? "opacity-30" : ""}`}>{day.getDate()}</span>
                             {list.map((i) => (
                               <button key={i.show.id + i.session.id} onClick={() => open(i)} aria-label={`${fmtDate(day)} ${i.session.time} ${i.show.title} ${i.hit.join(", ")}`}
                                 className="block w-full min-w-0 rounded-md px-1 py-1 text-left leading-tight hover:brightness-110 sm:px-1.5" style={{ background: showColor(i.show), color: readableText(showColor(i.show)) }}>
