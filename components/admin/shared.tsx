@@ -43,6 +43,7 @@ export function friendly(e: unknown): string {
   if (/event show not found/i.test(m)) return "이벤트를 붙일 공연을 찾지 못했어요. 화면을 새로고침한 뒤 다시 시도해 주세요. (아무것도 등록되지 않았어요)";
   if (/invalid event|too many events|events table not found/i.test(m)) return "이벤트 내용에 문제가 있어 등록하지 않았어요(이름이 비었거나 기간이 잘못됐거나 한 번에 2000개를 넘었어요). 미리보기의 안내를 확인해 주세요. (아무것도 등록되지 않았어요)";
   if (/function public\.import_schedule|import_schedule.*(does not exist|not find)|relation .*schedule_imports.* does not exist|could not find the table .*schedule_imports/i.test(m)) return "DB에 0014_schedule_import.sql 이 아직 적용되지 않았어요. Supabase SQL Editor에서 실행한 뒤 다시 시도해 주세요. (아무것도 등록되지 않았어요)";
+  if (/(rename_actor|undo_actor_rename|actor_renames)/i.test(m) && /does not exist|not find|schema cache/i.test(m)) return "DB에 0017_actor_rename.sql 이 아직 적용되지 않았어요. Supabase SQL Editor에서 실행한 뒤 다시 시도해 주세요. (아무것도 바뀌지 않았어요)";
   if (/too many sessions/i.test(m)) return "한 번에 등록할 수 있는 회차는 5000개까지예요. 파일을 나눠 올려 주세요. (아무것도 등록되지 않았어요)";
   if (/sessions not found|session not found/i.test(m)) return "선택한 회차 중 이미 없어진 것이 있어요. 화면을 새로고침한 뒤 다시 시도해 주세요. (아무것도 바뀌지 않았어요)";
   if (/different show/i.test(m)) return "다른 공연의 배역은 이 회차에 연결할 수 없어요.";
