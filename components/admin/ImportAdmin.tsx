@@ -268,7 +268,7 @@ export default function ImportAdmin({ shows, events = [] }: { shows: Show[]; eve
                 <p className="font-medium">포스터·색상</p>
                 <ul className="mt-1 space-y-0.5 text-xs">
                   {result.artReport.map((a) => {
-                    const bits = [a.poster === "uploaded" ? "포스터 올림" : a.poster === "removed" ? "포스터 삭제" : a.poster === "failed" ? "포스터 실패" : "", a.color === "set" ? "색 변경" : a.color === "reset" ? "색 자동 배정으로 되돌림" : a.color === "failed" ? "색 실패" : ""].filter(Boolean);
+                    const bits = [a.poster === "uploaded" ? "포스터 올림" : a.poster === "linked" ? "포스터 이미지 주소로 등록" : a.poster === "removed" ? "포스터 삭제" : a.poster === "failed" ? "포스터 실패" : "", a.color === "set" ? "색 변경" : a.color === "reset" ? "색 자동 배정으로 되돌림" : a.color === "failed" ? "색 실패" : ""].filter(Boolean);
                     const bad = a.poster === "failed" || a.color === "failed";
                     return <li key={a.title} className={bad ? "font-medium text-brand" : "text-mute"}><b className="text-ink">{a.title}</b> — {bits.join(" · ") || "변경 없음"}{a.error ? ` (${a.error})` : ""}</li>;
                   })}
@@ -392,7 +392,7 @@ export default function ImportAdmin({ shows, events = [] }: { shows: Show[]; eve
             {confirming && canRegister && (
               <div role="alertdialog" aria-label="최종 확인" data-testid="confirm-box" className="rounded-lg border border-brand bg-hit p-3 text-sm">
                 <p className="font-bold text-brand">이대로 등록할까요?</p>
-                {artItems.length > 0 && <p className="mt-1" data-testid="confirm-art">포스터·색상 저장: {artItems.map((x) => `${x.title}(${[x.draft.file ? (x.showId ? "포스터 교체/등록" : "포스터") : x.draft.removePoster ? "포스터 삭제" : "", x.draft.color === undefined ? "" : x.draft.color ? "색 변경" : "색 자동 배정"].filter(Boolean).join("·")})`).join(", ")} — 예약하지 않은 공연의 포스터·색은 그대로예요.</p>}
+                {artItems.length > 0 && <p className="mt-1" data-testid="confirm-art">포스터·색상 저장: {artItems.map((x) => `${x.title}(${[x.draft.file || x.draft.url ? `${x.showId ? "포스터 교체/등록" : "포스터"}${x.draft.url ? "(이미지 주소)" : ""}` : x.draft.removePoster ? "포스터 삭제" : "", x.draft.color === undefined ? "" : x.draft.color ? "색 변경" : "색 자동 배정"].filter(Boolean).join("·")})`).join(", ")} — 예약하지 않은 공연의 포스터·색은 그대로예요.</p>}
                 <p className="mt-1">{c ? <>신규 공연 <b>{c.newShows}</b>개 · 신규 회차 <b>{c.newSessions}</b>개 · 배우 배정 <b>{c.assignments}</b>건{c.existingSessions ? <> · 기존 회차 <b>{c.existingSessions}</b>개{updateCast ? "(캐스팅을 엑셀대로 변경)" : "(그대로 유지)"}</> : null}</> : null}{ec ? <>{c ? " · " : ""}신규 이벤트 <b>{ec.newEvents}</b>개{ec.existing + ec.dups ? <> (이미 있는 이벤트 <b>{ec.existing + ec.dups}</b>개는 건너뜀)</> : null}</> : null}{totalErrors ? <> · 오류로 등록하지 않는 행 <b>{totalErrors}</b>개</> : null}</p>
                 <div className="mt-2 flex gap-2">
                   <button onClick={() => void register()} disabled={busy} className={btn} data-testid="register-confirm">확인, 등록할게요</button>
