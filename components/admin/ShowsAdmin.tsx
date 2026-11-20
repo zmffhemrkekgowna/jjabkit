@@ -20,8 +20,6 @@ import ShowEventsEditor from "./ShowEventsEditor";
 /** 공연 종류 탭. '종료'는 장르와 상관없는 독립 필터예요: 종료일이 지난 공연이면 뮤지컬·연극·콘서트 모두 나와요. */
 type KindFilter = "all" | "뮤지컬" | "연극" | "콘서트" | "ended";
 const KINDS: [KindFilter, string][] = [["all", "전체"], ["뮤지컬", "뮤지컬"], ["연극", "연극"], ["콘서트", "콘서트"], ["ended", "종료"]];
-type EvFilter = "all" | "with" | "without";
-const FILTERS: [EvFilter, string][] = [["all", "전체"], ["with", "이벤트 있음"], ["without", "이벤트 없음"]];
 
 export default function ShowsAdmin({ shows, events, onWriteNotice, onOpenImport }: { shows: Show[]; events: EventItem[]; onWriteNotice: (show: Show) => void; onOpenImport?: () => void }) {
   // aid가 없으면 공연 목록, 있으면 그 공연의 상세 관리 화면이에요.
@@ -30,7 +28,6 @@ export default function ShowsAdmin({ shows, events, onWriteNotice, onOpenImport 
   const [ask, setAsk] = useState(false);
   const [q, setQ] = useState("");
   const [kind, setKind] = useState<KindFilter>("all");
-  const [filter, setFilter] = useState<EvFilter>("all");
   const { run, msg, setMsg } = useAdminRun();
   const show = aid ? shows.find((s) => s.id === aid) : undefined; // 삭제 등으로 사라지면 자동으로 목록으로 돌아가요
   const evOf = (id: string) => events.filter((e) => e.showId === id);
@@ -41,15 +38,13 @@ export default function ShowsAdmin({ shows, events, onWriteNotice, onOpenImport 
   const addShow = () => run(async (c) => { pick(await createShow(c)); }, "새 공연을 만들었어요. 아래에서 정보를 채워 주세요.");
 
   if (!show) {
-    // 검색어와 이벤트 유무 필터는 함께 적용돼요. 이벤트 정보는 목록에 표시하지 않고 필터로만 써요.
+    // 검색어와 종류 탭(전체·뮤지컬·연극·콘서트·종료)은 함께 적용돼요. 종료는 종료일이 오늘보다 이전인 공연이에요(종료일이 오늘이면 아직 공연 중).
     const needle = q.trim().toLowerCase();
     const kindOk = (x: Show) => kind === "all" || (kind === "ended" ? statusOf(x, today) === "ended" : x.genre === kind);
     const shown = shows.filter((x) =>
-      kindOk(x) &&
-      (!needle || (x.title || "(제목 없음)").toLowerCase().includes(needle)) &&
-      (filter === "all" || (filter === "with") === (evOf(x.id).length > 0)));
+      kindOk(x) && (!needle || (x.title || "(제목 없음)").toLowerCase().includes(needle)));
     return (
-      <div className="space-y-4">
+      <div className="space-y-3">
         <div className="flex items-center justify-between gap-2">
           <h2 className="text-lg font-bold">공연 관리</h2>
           <div className="flex flex-wrap items-center gap-2">
@@ -57,7 +52,7 @@ export default function ShowsAdmin({ shows, events, onWriteNotice, onOpenImport 
             <button onClick={addShow} className={btn}><Plus size={14} aria-hidden />새 공연</button>
           </div>
         </div>
-        <p aria-live="polite" className="min-h-5 text-sm text-brand">{msg}</p>
+        <p aria-live="polite" className="text-sm text-brand empty:hidden">{msg}</p>
         {shows.length === 0 ? (
           <p className="rounded-xl border border-dashed border-line py-10 text-center text-sm text-mute">등록된 공연이 없어요. &lsquo;새 공연&rsquo;으로 첫 공연을 만들어 보세요.</p>
         ) : (
@@ -66,23 +61,16 @@ export default function ShowsAdmin({ shows, events, onWriteNotice, onOpenImport 
               <input type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="공연명을 검색하세요." aria-label="공연명 검색" className={`${inp} pr-10`} />
               <Search size={16} aria-hidden className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-mute" />
             </div>
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <div className="flex max-w-full flex-wrap gap-0.5 rounded-lg border border-line p-0.5" role="group" aria-label="공연 종류 필터">
-                {KINDS.map(([v, label]) => (
-                  <button key={v} aria-pressed={kind === v} onClick={() => setKind(v)}
-                    className={`rounded-md px-3 py-1.5 text-sm ${kind === v ? "bg-ink text-bg" : "text-mute"}`}>{label}</button>
-                ))}
+            <div className="flex items-center gap-2">
+              <div className="min-w-0 flex-1 overflow-x-auto">
+                <div className="inline-flex gap-0.5 whitespace-nowrap rounded-lg border border-line p-0.5" role="group" aria-label="공연 종류 필터">
+                  {KINDS.map(([v, label]) => (
+                    <button key={v} aria-pressed={kind === v} onClick={() => setKind(v)}
+                      className={`shrink-0 rounded-md px-3 py-1.5 text-sm ${kind === v ? "bg-ink text-bg" : "text-mute"}`}>{label}</button>
+                  ))}
+                </div>
               </div>
-              <span className="text-xs text-mute">{shown.length === shows.length ? `공연 ${shows.length}개` : `${shown.length} / ${shows.length}개`}</span>
-            </div>
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="text-xs text-mute">이벤트</span>
-              <div className="inline-flex rounded-lg border border-line p-0.5" role="group" aria-label="이벤트 유무 필터">
-                {FILTERS.map(([v, label]) => (
-                  <button key={v} aria-pressed={filter === v} onClick={() => setFilter(v)}
-                    className={`rounded-md px-3 py-1.5 text-sm ${filter === v ? "bg-ink text-bg" : "text-mute"}`}>{label}</button>
-                ))}
-              </div>
+              <span className="shrink-0 text-xs text-mute">{shown.length === shows.length ? `공연 ${shows.length}개` : `${shown.length} / ${shows.length}개`}</span>
             </div>
             {shown.length === 0 ? (
               <p role="status" className="rounded-xl border border-dashed border-line py-10 text-center text-sm text-mute">검색 결과가 없습니다.</p>
