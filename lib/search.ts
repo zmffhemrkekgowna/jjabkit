@@ -49,16 +49,38 @@ export function splitHit(text: string, q: string): [string, string, string] {
   return [text.slice(0, from), text.slice(from, to), text.slice(to)];
 }
 
-export type SortKey = "default" | "title" | "start" | "end";
+export type SortKey = "title" | "start" | "end";
+/** 처음 열었을 때(그리고 새로고침했을 때)의 정렬은 공연명순이에요. */
+export const DEFAULT_SORT: SortKey = "title";
 export const SORTS: { v: SortKey; label: string }[] = [
-  { v: "default", label: "기본순" }, { v: "title", label: "공연명순" }, { v: "start", label: "개막일순" }, { v: "end", label: "종료일순" },
+  { v: "title", label: "공연명순" }, { v: "start", label: "개막일순" }, { v: "end", label: "종료일순" },
 ];
+/**
+ * 공연명순: 브라우저마다 다르게 정렬되지 않도록 순서를 직접 정했어요.
+ * 첫 글자(앞의 기호·공백은 건너뛰어요)가 숫자 → 한글 → 영문 → 그 밖의 문자 순이고, 같은 종류끼리는 가나다·ABC 순이에요.
+ * 영문은 대소문자를 구분하지 않고, 숫자는 크기 순(2 < 10)이에요. 제목이 비어 있는 공연은 맨 뒤로 보내요.
+ */
+const titleCollator = new Intl.Collator("ko", { numeric: true, sensitivity: "base" });
+const titleGroup = (t: string): number => {
+  const c = t.replace(/^[^0-9A-Za-z\u3131-\u318E\uAC00-\uD7A3]+/, "").charAt(0);
+  if (!c) return 4;
+  if (/[0-9]/.test(c)) return 0;
+  if (/[\u3131-\u318E\uAC00-\uD7A3]/.test(c)) return 1;
+  if (/[A-Za-z]/.test(c)) return 2;
+  return 3;
+};
+export const compareTitle = (a: string, b: string): number => {
+  const x = a.trim(), y = b.trim();
+  if (!x && !y) return 0;
+  if (!x) return 1;
+  if (!y) return -1;
+  return titleGroup(x) - titleGroup(y) || titleCollator.compare(x, y);
+};
 /** 날짜가 비어 있는 공연은 임의의 날짜로 치지 않고 맨 뒤로 보내요. 같으면 원래 순서를 지켜요(안정 정렬). */
 export function sortShows<T extends { show: Show }>(rows: T[], key: SortKey): T[] {
-  if (key === "default") return rows;
   const idx = new Map(rows.map((r, i) => [r, i]));
   const cmp = (a: T, b: T): number => {
-    if (key === "title") return a.show.title.localeCompare(b.show.title, "ko");
+    if (key === "title") return compareTitle(a.show.title, b.show.title);
     const x = key === "start" ? a.show.start : a.show.end, y = key === "start" ? b.show.start : b.show.end;
     if (!x && !y) return 0;
     if (!x) return 1;

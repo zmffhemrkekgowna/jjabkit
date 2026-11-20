@@ -14,7 +14,7 @@ import { StatusTag } from "./ui/Tags";
 import HomeTabs from "./HomeTabs";
 import AdSenseBanner from "./ads/AdSenseBanner";
 import { ADSENSE_SLOT_LIST } from "@/lib/ads";
-import { searchShows, sortShows, splitHit, SORTS, type SortKey } from "@/lib/search";
+import { DEFAULT_SORT, searchShows, sortShows, splitHit, SORTS, type SortKey } from "@/lib/search";
 import { useRecent } from "@/lib/recent";
 
 function Hit({ text, q }: { text: string; q: string }) {
@@ -91,7 +91,7 @@ export default function ShowList({ shows }: { shows: Show[] }) {
   const [cat, setCat] = useState<"전체" | Genre>("전체");
   const [st, setSt] = useState<"전체" | ShowStatus>(DEFAULT_ST);
 
-  const [sort, setSort] = useState<SortKey>("default");
+  const [sort, setSort] = useState<SortKey>(DEFAULT_SORT);
   const rows = useMemo(() => {
     const found = searchShows(shows, q).filter(({ show: s }) => (cat === "전체" || s.genre === cat) && (st === "전체" || statusOf(s, today) === st));
     return sortShows(found, sort);
@@ -100,7 +100,7 @@ export default function ShowList({ shows }: { shows: Show[] }) {
   const recent = useRecent(validIds);
   const recentShows = recent.ids.map((id) => shows.find((s) => s.id === id)).filter((s): s is Show => !!s);
   const filtering = q.trim() !== "" || cat !== "전체" || st !== DEFAULT_ST;
-  const reset = () => { setQ(""); setCat("전체"); setSt(DEFAULT_ST); setSort("default"); };
+  const reset = () => { setQ(""); setCat("전체"); setSt(DEFAULT_ST); setSort(DEFAULT_SORT); };
 
   const rowLabel = "w-8 shrink-0 text-[11px] font-bold text-mute";
   const scroller = "flex min-w-0 flex-1 gap-2 overflow-x-auto py-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden";

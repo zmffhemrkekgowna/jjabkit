@@ -17,6 +17,9 @@ import ConcertCastEditor from "./ConcertCastEditor";
 import SessionsEditor from "./SessionsEditor";
 import ShowEventsEditor from "./ShowEventsEditor";
 
+/** 공연 종류 탭. '종료'는 장르와 상관없는 독립 필터예요: 종료일이 지난 공연이면 뮤지컬·연극·콘서트 모두 나와요. */
+type KindFilter = "all" | "뮤지컬" | "연극" | "콘서트" | "ended";
+const KINDS: [KindFilter, string][] = [["all", "전체"], ["뮤지컬", "뮤지컬"], ["연극", "연극"], ["콘서트", "콘서트"], ["ended", "종료"]];
 type EvFilter = "all" | "with" | "without";
 const FILTERS: [EvFilter, string][] = [["all", "전체"], ["with", "이벤트 있음"], ["without", "이벤트 없음"]];
 
@@ -26,6 +29,7 @@ export default function ShowsAdmin({ shows, events, onWriteNotice, onOpenImport 
   const [aid, setAid] = useState<string | null>(null);
   const [ask, setAsk] = useState(false);
   const [q, setQ] = useState("");
+  const [kind, setKind] = useState<KindFilter>("all");
   const [filter, setFilter] = useState<EvFilter>("all");
   const { run, msg, setMsg } = useAdminRun();
   const show = aid ? shows.find((s) => s.id === aid) : undefined; // 삭제 등으로 사라지면 자동으로 목록으로 돌아가요
@@ -39,7 +43,9 @@ export default function ShowsAdmin({ shows, events, onWriteNotice, onOpenImport 
   if (!show) {
     // 검색어와 이벤트 유무 필터는 함께 적용돼요. 이벤트 정보는 목록에 표시하지 않고 필터로만 써요.
     const needle = q.trim().toLowerCase();
+    const kindOk = (x: Show) => kind === "all" || (kind === "ended" ? statusOf(x, today) === "ended" : x.genre === kind);
     const shown = shows.filter((x) =>
+      kindOk(x) &&
       (!needle || (x.title || "(제목 없음)").toLowerCase().includes(needle)) &&
       (filter === "all" || (filter === "with") === (evOf(x.id).length > 0)));
     return (
@@ -61,13 +67,22 @@ export default function ShowsAdmin({ shows, events, onWriteNotice, onOpenImport 
               <Search size={16} aria-hidden className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-mute" />
             </div>
             <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="flex max-w-full flex-wrap gap-0.5 rounded-lg border border-line p-0.5" role="group" aria-label="공연 종류 필터">
+                {KINDS.map(([v, label]) => (
+                  <button key={v} aria-pressed={kind === v} onClick={() => setKind(v)}
+                    className={`rounded-md px-3 py-1.5 text-sm ${kind === v ? "bg-ink text-bg" : "text-mute"}`}>{label}</button>
+                ))}
+              </div>
+              <span className="text-xs text-mute">{shown.length === shows.length ? `공연 ${shows.length}개` : `${shown.length} / ${shows.length}개`}</span>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-xs text-mute">이벤트</span>
               <div className="inline-flex rounded-lg border border-line p-0.5" role="group" aria-label="이벤트 유무 필터">
                 {FILTERS.map(([v, label]) => (
                   <button key={v} aria-pressed={filter === v} onClick={() => setFilter(v)}
                     className={`rounded-md px-3 py-1.5 text-sm ${filter === v ? "bg-ink text-bg" : "text-mute"}`}>{label}</button>
                 ))}
               </div>
-              <span className="text-xs text-mute">{shown.length === shows.length ? `공연 ${shows.length}개` : `${shown.length} / ${shows.length}개`}</span>
             </div>
             {shown.length === 0 ? (
               <p role="status" className="rounded-xl border border-dashed border-line py-10 text-center text-sm text-mute">검색 결과가 없습니다.</p>
@@ -77,6 +92,7 @@ export default function ShowsAdmin({ shows, events, onWriteNotice, onOpenImport 
                   <li key={x.id}>
                     <button onClick={() => pick(x.id)} aria-label={`${x.title || "(제목 없음)"} 관리`} className="flex w-full items-center gap-2 px-4 py-3 text-left hover:bg-hit">
                       <span className="min-w-0 flex-1 truncate font-medium">{x.title || "(제목 없음)"}</span>
+                      <span className="shrink-0 text-xs text-mute">{x.genre}</span>
                       <StatusTag status={statusOf(x, today)} className="shrink-0" />
                       <ChevronRight size={16} aria-hidden className="shrink-0 text-mute" />
                     </button>
