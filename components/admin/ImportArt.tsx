@@ -1,13 +1,14 @@
 "use client";
 
 import { useEffect, useRef, useState, type DragEvent } from "react";
-import { ImagePlus, Pipette, RotateCcw, Trash2 } from "lucide-react";
+import { ImagePlus, Link2, Pipette, RotateCcw, Trash2 } from "lucide-react";
 import Poster from "../ui/Poster";
 import SlotCard from "../casting/SlotCard";
 import { isHex6 } from "@/lib/color";
 import { candidatesFromImage, type Candidate } from "@/lib/posterColor";
 import { artChanges, type ArtDraft } from "@/lib/db/importArt";
 import { POSTER_ACCEPT, POSTER_LABEL, POSTER_MAX_MB, POSTER_TYPES, posterFileProblem, toStaticPoster } from "@/lib/posterFile";
+import { resolvePosterUrl } from "@/lib/posterUrl";
 import { ghost, inp } from "./shared";
 
 export { POSTER_TYPES, POSTER_MAX_MB, posterFileProblem };
@@ -36,6 +37,10 @@ export default function ImportArt({ title, current, draft, onChange }: Props) {
   const [drag, setDrag] = useState(false);
   const [hexText, setHexText] = useState(draft.color ?? "");
   const [hexBad, setHexBad] = useState(false);
+  const [urlText, setUrlText] = useState(draft.url ?? "");
+  const [urlErr, setUrlErr] = useState("");
+  const [urlBusy, setUrlBusy] = useState(false);
+  const urlSeq = useRef(0); // 확인 중에 파일을 고르거나 다시 확인하면 앞선 확인 결과는 버려요
 
   useEffect(() => {
     if (!draft.file) { setPreview(""); return; }
@@ -44,12 +49,14 @@ export default function ImportArt({ title, current, draft, onChange }: Props) {
     return () => URL.revokeObjectURL(u);
   }, [draft.file]);
   useEffect(() => { setHexText(draft.color ?? ""); setHexBad(false); }, [draft.color]);
+  useEffect(() => { setUrlText(draft.url ?? ""); setUrlErr(""); }, [draft.url]);
 
   const savedColor = current?.color ?? "";
   const shownColor = draft.color !== undefined ? draft.color : savedColor;
   const pickerValue = isHex6(shownColor) ? shownColor : "#8b1e3f";
-  const posterShown = draft.removePoster ? "" : preview || current?.img || "";
-  const canExtract = !!draft.file || (!!current?.img && !draft.removePoster);
+  const posterShown = draft.removePoster ? "" : preview || draft.url || current?.img || "";
+  const newPoster = !!(draft.file || draft.url);
+  const canExtract = newPoster || (!!current?.img && !draft.removePoster);
 
   const extract = async (src: Blob | string) => {
     setExtracting(true); setMsg("");
@@ -59,25 +66,51 @@ export default function ImportArt({ title, current, draft, onChange }: Props) {
       if (!list.length) setMsg("포스터에서 대표 색을 찾지 못했어요(흑백·회색 위주예요). 아래에서 직접 골라 주세요.");
     } catch {
       setCands(null);
-      setMsg("색 자동 추출에 실패했어요. 포스터 업로드는 그대로 되고, 색은 아래에서 직접 고르면 돼요.");
+      setMsg(typeof src === "string" && src !== current?.img
+        ? "이 이미지 주소는 그 사이트가 색 분석을 막아 두어 대표 색을 뽑지 못했어요. 포스터 등록은 그대로 되고, 색은 아래에서 직접 고르면 돼요."
+        : "색 자동 추출에 실패했어요. 포스터 업로드는 그대로 되고, 색은 아래에서 직접 고르면 돼요.");
     } finally { setExtracting(false); }
   };
 
   const pick = async (f: File | undefined | null) => {
     if (!f) return;
+    urlSeq.current++; setUrlBusy(false); setUrlErr("");
     const p = posterFileProblem(f);
     if (p) { setMsg(p); return; }
     let file: File;
     try { file = await toStaticPoster(f); } // GIF → 첫 프레임 PNG. 미리보기도 이 정지 이미지로 보여요.
     catch (e) { setMsg(e instanceof Error ? e.message : "이미지를 처리하지 못했어요."); return; }
     setMsg(file !== f ? "GIF는 첫 번째 프레임만 쓰는 정지 포스터로 올려요." : ""); setCands(null);
-    onChange({ ...draft, file, removePoster: false });
+    setUrlText(""); // 파일을 고르면 입력해 둔 이미지 주소보다 파일이 우선이에요
+    onChange({ ...draft, file, url: undefined, removePoster: false });
     void extract(file); // 올리자마자 후보를 보여 줘요. 적용은 관리자가 직접 눌러야 해요.
   };
   const onDrop = (e: DragEvent) => { e.preventDefault(); setDrag(false); void pick(e.dataTransfer.files?.[0]); };
+  const applyUrl = async () => {
+    if (urlBusy) return;
+    const seq = ++urlSeq.current;
+    setUrlErr(""); setMsg(""); setUrlBusy(true);
+    try {
+      const r = await resolvePosterUrl(urlText);
+      if (seq !== urlSeq.current) return;
+      setCands(null);
+      if (r.file) { // GIF 주소 → 첫 장면 PNG 파일로 바꿔 파일 업로드와 똑같이 저장해요
+        setUrlText("");
+        onChange({ ...draft, file: r.file, url: undefined, removePoster: false });
+        setMsg("GIF 주소라서 첫 장면만 정지 이미지(PNG) 파일로 바꿔 올려요.");
+        void extract(r.file);
+      } else { // 새로 입력한 주소가 앞서 고른 파일보다 우선이에요
+        setUrlText(r.url);
+        onChange({ ...draft, url: r.url, file: undefined, removePoster: false });
+        void extract(r.url);
+      }
+    } catch (e) {
+      if (seq === urlSeq.current) setUrlErr(e instanceof Error ? e.message : "이미지를 불러오지 못했어요.");
+    } finally { if (seq === urlSeq.current) setUrlBusy(false); }
+  };
   const removePoster = () => {
-    setCands(null); setMsg("");
-    if (draft.file) onChange({ ...draft, file: undefined });
+    setCands(null); setMsg(""); setUrlErr("");
+    if (draft.file || draft.url) { setUrlText(""); onChange({ ...draft, file: undefined, url: undefined }); }
     else if (current?.img) onChange({ ...draft, removePoster: true });
   };
   const setColor = (hex: string | undefined) => onChange({ ...draft, color: hex });
@@ -87,7 +120,7 @@ export default function ImportArt({ title, current, draft, onChange }: Props) {
     <div className="border-t border-line px-3 py-2" data-testid="art-panel">
       <button type="button" onClick={() => setOpen((o) => !o)} aria-expanded={open} data-testid="art-toggle" className="flex w-full flex-wrap items-center gap-2 text-left text-sm font-medium">
         <ImagePlus size={15} aria-hidden /> 포스터 · 스케줄 색상 <span className="text-xs font-normal text-mute">(선택{current ? " · 지금 값은 바꾸지 않으면 그대로 유지돼요" : ""})</span>
-        {draft.file && <span className="rounded-full bg-hit px-2 py-0.5 text-[11px] font-bold text-brand">{current?.img ? "포스터 교체 예정" : "포스터 등록 예정"}</span>}
+        {newPoster && <span className="rounded-full bg-hit px-2 py-0.5 text-[11px] font-bold text-brand">{current?.img ? "포스터 교체 예정" : "포스터 등록 예정"}</span>}
         {draft.removePoster && <span className="rounded-full bg-hit px-2 py-0.5 text-[11px] font-bold text-brand">포스터 삭제 예정</span>}
         {draft.color !== undefined && <span className="rounded-full bg-hit px-2 py-0.5 text-[11px] font-bold text-brand">{draft.color ? "색 변경 예정" : "색 자동 배정으로"}</span>}
         <span className="ml-auto text-xs text-mute">{open ? "접기" : n ? "펼쳐서 확인" : "펼치기"}</span>
@@ -110,20 +143,39 @@ export default function ImportArt({ title, current, draft, onChange }: Props) {
               <div className="mt-2 flex flex-wrap items-center gap-2">
                 <input ref={fileRef} type="file" accept={POSTER_ACCEPT} hidden data-testid="art-file" onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; void pick(f); }} />
                 <button type="button" onClick={() => fileRef.current?.click()} className={ghost} data-testid="art-pick"><ImagePlus size={14} aria-hidden />{posterShown ? "다른 이미지로 교체" : "파일 선택"}</button>
-                {(draft.file || (current?.img && !draft.removePoster)) && (
-                  <button type="button" onClick={removePoster} className={ghost} data-testid="art-remove"><Trash2 size={14} aria-hidden />{draft.file ? "선택 취소" : "포스터 삭제"}</button>
+                {(newPoster || (current?.img && !draft.removePoster)) && (
+                  <button type="button" onClick={removePoster} className={ghost} data-testid="art-remove"><Trash2 size={14} aria-hidden />{newPoster ? "선택 취소" : "포스터 삭제"}</button>
                 )}
                 {draft.removePoster && <button type="button" onClick={() => onChange({ ...draft, removePoster: false })} className="text-xs text-mute underline" data-testid="art-remove-undo">삭제 취소</button>}
               </div>
               {draft.file && <p className="mt-1 break-all text-xs text-mute" data-testid="art-filename">{draft.file.name} · {(draft.file.size / 1024 / 1024).toFixed(1)}MB</p>}
               {draft.removePoster && <p className="mt-1 text-xs font-medium text-brand">일괄 등록을 누르면 이 공연의 포스터가 지워지고 기본 포스터가 보여요.</p>}
-              {!current?.img && !draft.file && <p className="mt-1 text-xs text-mute">포스터가 없으면 기존처럼 기본 포스터가 보여요.</p>}
+              {!current?.img && !newPoster && <p className="mt-1 text-xs text-mute">포스터가 없으면 기존처럼 기본 포스터가 보여요.</p>}
+
+              <div className="mt-3 border-t border-line pt-3" data-testid="art-url-box">
+                <p className="text-xs text-mute">또는 이미지 주소를 입력하세요. (http:// · https:// · 웹페이지가 아닌 이미지 자체의 주소)</p>
+                <div className="mt-2 flex flex-wrap items-center gap-2">
+                  <input type="url" inputMode="url" value={urlText} onChange={(e) => { setUrlText(e.target.value); setUrlErr(""); }}
+                    onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); void applyUrl(); } }}
+                    placeholder="https://example.com/poster.jpg" aria-label="포스터 이미지 주소" aria-invalid={!!urlErr} data-testid="art-url"
+                    className={`${inp} min-w-0 flex-1 basis-56 ${urlErr ? "border-brand" : ""}`} />
+                  <button type="button" onClick={() => void applyUrl()} disabled={urlBusy || !urlText.trim() || (!!draft.url && urlText.trim() === draft.url)} className={ghost} data-testid="art-url-apply">
+                    <Link2 size={14} aria-hidden />{urlBusy ? "확인 중…" : "미리보기 확인"}
+                  </button>
+                </div>
+                {urlErr && <p role="alert" className="mt-1 text-xs font-medium text-brand" data-testid="art-url-error">{urlErr}</p>}
+              </div>
+
+              <p className="mt-3 rounded-lg bg-card px-2 py-1.5 text-xs" data-testid="art-source" data-source={draft.removePoster ? "remove" : draft.file ? "file" : draft.url ? "url" : current?.img ? "current" : "none"}>
+                <b>적용될 포스터:</b>{" "}
+                {draft.removePoster ? "삭제(기본 포스터)" : draft.file ? `새 파일 — ${draft.file.name}` : draft.url ? <>이미지 주소 — <span className="break-all">{draft.url}</span></> : current?.img ? "지금 포스터 그대로" : "없음(기본 포스터)"}
+              </p>
             </div>
 
             <div role="group" aria-label="스케줄 색상" className="rounded-xl bg-bg p-3">
               <p className="text-sm font-medium">스케줄 색상 <span className="text-xs font-normal text-mute">{savedColor ? `지금 저장된 색 ${savedColor}` : "저장된 색 없음 — 비워 두면 자동 배정돼요"}</span></p>
               <div className="mt-2 flex flex-wrap items-center gap-2">
-                <button type="button" onClick={() => canExtract && void extract(draft.file ?? current!.img)} disabled={!canExtract || extracting} className={ghost} data-testid="art-extract">
+                <button type="button" onClick={() => canExtract && void extract(draft.file ?? draft.url ?? current!.img)} disabled={!canExtract || extracting} className={ghost} data-testid="art-extract">
                   <Pipette size={14} aria-hidden />{extracting ? "분석 중…" : "포스터에서 대표 색상 추출"}
                 </button>
                 {!canExtract && <span className="text-xs text-mute">포스터를 올리면 사용할 수 있어요.</span>}
