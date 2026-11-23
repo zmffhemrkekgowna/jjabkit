@@ -17,7 +17,7 @@ import EventsTab from "./EventsTab";
 import AdSenseBanner from "./ads/AdSenseBanner";
 import { ADSENSE_SLOT_DETAIL } from "@/lib/ads";
 import { recordRecent } from "@/lib/recent";
-import { statusOf } from "@/lib/status";
+import { isClosingSoon, statusOf } from "@/lib/status";
 import { useTodayKST } from "@/lib/useToday";
 
 export default function ShowDetail({ show, events = [], initialOpen = null }: { show: Show; events?: EventItem[]; initialOpen?: { date: string; sid?: string } | null }) {
@@ -46,7 +46,7 @@ export default function ShowDetail({ show, events = [], initialOpen = null }: { 
         <Poster show={show} className="h-28 w-20 shrink-0 rounded-xl text-base" />
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-1.5">
-            <StatusTag status={statusOf(show, today)} />
+            <StatusTag status={statusOf(show, today)} closing={isClosingSoon(show, today)} />
             <span className="rounded-full border border-line px-2 py-0.5 text-xs text-mute">{show.genre}</span>
             <FavShowButton showId={show.id} />
           </div>

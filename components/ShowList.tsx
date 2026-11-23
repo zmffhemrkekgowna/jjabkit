@@ -6,7 +6,7 @@ import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { ChevronRight, Search, X } from "lucide-react";
 import type { Genre, Show } from "@/types/show";
-import { statusOf, type ShowStatus } from "@/lib/status";
+import { isClosingSoon, statusOf, type ShowStatus } from "@/lib/status";
 import { useTodayKST } from "@/lib/useToday";
 import { useFavorites } from "@/lib/favorites";
 import { HeartButton } from "./ui/HeartButton";
@@ -23,10 +23,12 @@ function Hit({ text, q }: { text: string; q: string }) {
 }
 
 const CATS: ("전체" | Genre)[] = ["전체", "뮤지컬", "연극", "콘서트"];
+/** '폐막 임박'은 공연 중인 공연의 일부라서, '공연 중' 탭과 '폐막 임박' 탭 양쪽에 나와요. */
+type StatusFilter = "전체" | ShowStatus | "closing";
 /** 처음 들어오면 '공연 중'만 보여요. 새로고침하면 다시 이 값으로 돌아와요(어디에도 저장하지 않아요). */
-const DEFAULT_ST: "전체" | ShowStatus = "running";
-const STATUS: { v: "전체" | ShowStatus; label: string }[] = [
-  { v: "전체", label: "전체" }, { v: "running", label: "공연 중" }, { v: "upcoming", label: "개막 예정" }, { v: "ended", label: "종료" },
+const DEFAULT_ST: StatusFilter = "running";
+const STATUS: { v: StatusFilter; label: string }[] = [
+  { v: "전체", label: "전체" }, { v: "running", label: "공연 중" }, { v: "closing", label: "폐막 임박" }, { v: "upcoming", label: "개막 예정" }, { v: "ended", label: "종료" },
 ];
 
 /** 포스터 주소가 있는 공연만 작은 그림을 보여줘요. 없거나 못 불러오면 아무것도 그리지 않아요(임의의 그림을 만들지 않아요). */
@@ -89,11 +91,11 @@ export default function ShowList({ shows }: { shows: Show[] }) {
   const today = useTodayKST(); // 자정이 지나면 상태 탭 분류도 저절로 바뀌어요
   const [q, setQ] = useState("");
   const [cat, setCat] = useState<"전체" | Genre>("전체");
-  const [st, setSt] = useState<"전체" | ShowStatus>(DEFAULT_ST);
+  const [st, setSt] = useState<StatusFilter>(DEFAULT_ST);
 
   const [sort, setSort] = useState<SortKey>(DEFAULT_SORT);
   const rows = useMemo(() => {
-    const found = searchShows(shows, q).filter(({ show: s }) => (cat === "전체" || s.genre === cat) && (st === "전체" || statusOf(s, today) === st));
+    const found = searchShows(shows, q).filter(({ show: s }) => (cat === "전체" || s.genre === cat) && (st === "전체" || (st === "closing" ? isClosingSoon(s, today) : statusOf(s, today) === st)));
     return sortShows(found, sort);
   }, [shows, q, cat, st, sort, today]);
   const validIds = useMemo(() => new Set(shows.map((s) => s.id)), [shows]);
@@ -177,7 +179,7 @@ export default function ShowList({ shows }: { shows: Show[] }) {
                   <span className="min-w-0 flex-1">
                     <span className="block break-words text-base font-bold leading-snug"><Hit text={s.title} q={q} /></span>
                     <span className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs font-normal text-mute">
-                      <StatusTag status={statusOf(s, today)} />
+                      <StatusTag status={statusOf(s, today)} closing={isClosingSoon(s, today)} />
                       <span>{s.genre}</span>
                     </span>
                     {actors.length > 0 && (
