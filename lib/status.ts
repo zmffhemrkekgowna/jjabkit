@@ -32,3 +32,22 @@ export function statusOf(show: { start: string; end: string }, today: string = t
   if (today > show.end) return "ended";
   return "running";
 }
+
+/** 폐막 임박: 종료일까지 이 일수 이하로 남은 공연 */
+export const CLOSING_DAYS = 7;
+
+function dayNo(s: string): number {
+  const [y, m, d] = s.split("-").map(Number);
+  return Date.UTC(y, m - 1, d) / 86400000;
+}
+
+/**
+ * 폐막 임박: '공연 중'인 공연 중 종료일까지 1~7일 남은 경우.
+ * 종료일 당일, 개막 전, 종료 후 공연은 해당하지 않아요.
+ * statusOf는 그대로라서 '공연 중' 탭에도 계속 나와요.
+ */
+export function isClosingSoon(show: { start: string; end: string }, today: string = todayKST()): boolean {
+  if (statusOf(show, today) !== "running") return false;
+  const left = dayNo(show.end) - dayNo(today);
+  return left >= 1 && left <= CLOSING_DAYS;
+}
