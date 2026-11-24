@@ -247,7 +247,7 @@ function sheetXml(rows: string[][], widths: number[], opts: { freeze?: boolean; 
 }
 
 export const TEMPLATE_HEADERS = ["공연명", "공연장", "공연 시작일", "공연 종료일", "공연일", "공연 시간", "배우명", "공지 링크", "배역명", "장르", "관람등급", "러닝타임"];
-export const EVENT_TEMPLATE_HEADERS = ["공연명", "이벤트명", "이벤트 시작일", "이벤트 종료일"];
+export const EVENT_TEMPLATE_HEADERS = ["공연명", "이벤트명", "이벤트 시작일", "이벤트 종료일", "공지 링크"];
 
 /** 업로드 양식(.xlsx)을 만들어요. '일정'·'이벤트' 시트는 머리글만 있고, '작성 안내' 시트에 설명과 예시가 있어요. */
 export function buildTemplateXlsx(): Uint8Array {
@@ -277,15 +277,16 @@ export function buildTemplateXlsx(): Uint8Array {
     ["이벤트명", "이벤트 이름", "필수", "관객 감사 이벤트"],
     ["이벤트 시작일", "YYYY-MM-DD 형식으로 입력해 주세요.", "필수", "2026-11-15"],
     ["이벤트 종료일", "YYYY-MM-DD 형식. 시작일보다 빠를 수 없어요. 하루짜리면 시작일과 같은 날짜를 적어 주세요.", "필수", "2026-11-20"],
+    ["공지 링크", "선택 칸(E열). 이벤트 공지 주소(http:// 또는 https://로 시작). 적은 주소 그대로 저장돼요(?·&·= 같은 기호도 그대로). 비워 두면 링크 없이 등록돼요. 이미 등록된 같은 이벤트(이름·기간이 같음)에 링크가 비어 있으면 이 링크로 채우고, 이미 다른 링크가 있으면 바꾸지 않아요. 이 열이 없는 예전 양식도 그대로 올릴 수 있어요.", "선택", "https://example.com/notice?id=1&tab=2"],
     ["이벤트 규칙", "같은 공연명으로 여러 행을 쓰면 그 공연에 이벤트가 여러 개 등록돼요. 이벤트 기간은 공연 기간과 별개이고, 이벤트끼리 기간이 겹쳐도 등록돼요. 이벤트명이 같아도 기간이 다르면 별개의 이벤트예요. 이벤트명과 기간이 모두 같은 이벤트가 이미 있으면 새로 만들지 않고 건너뛰어요. 이벤트 시트를 비워 두어도 기존 이벤트는 지우거나 바꾸지 않아요. 이벤트 색은 공연 색을 따라가요.", "", ""],
-    ["이벤트 예시", "공연명 | 이벤트명 | 이벤트 시작일 | 이벤트 종료일", "", ""],
-    ["", "레베카 | 관객 감사 이벤트 | 2026-11-15 | 2026-11-20", "", ""],
+    ["이벤트 예시", "공연명 | 이벤트명 | 이벤트 시작일 | 이벤트 종료일 | 공지 링크", "", ""],
+    ["", "레베카 | 관객 감사 이벤트 | 2026-11-15 | 2026-11-20 | https://example.com/notice", "", ""],
     ["", "레베카 | 커튼콜 데이 | 2026-11-25 | 2026-11-25", "", ""],
     ["", "레베카 | 스페셜 포토타임 | 2026-12-01 | 2026-12-03", "", ""],
     ["", "프랑켄슈타인 | 관객 참여 이벤트 | 2026-12-05 | 2026-12-10", "", ""],
   ];
   const sheet1 = sheetXml([TEMPLATE_HEADERS], [18, 18, 14, 14, 14, 12, 24, 30, 16, 10, 12, 12], { freeze: true, headerStyle: 1, textCols: true });
-  const sheet2 = sheetXml([EVENT_TEMPLATE_HEADERS], [22, 28, 16, 16], { freeze: true, headerStyle: 1, textCols: true });
+  const sheet2 = sheetXml([EVENT_TEMPLATE_HEADERS], [22, 28, 16, 16, 40], { freeze: true, headerStyle: 1, textCols: true });
   const sheet3 = sheetXml(guide, [14, 90, 10, 24], { headerStyle: 1 });
   const ct = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/worksheets/sheet2.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/worksheets/sheet3.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/></Types>`;
   const rels = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>`;

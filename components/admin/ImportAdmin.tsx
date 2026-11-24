@@ -26,7 +26,7 @@ const EV_STATUS: Record<EventStatus, { label: string; cls: string }> = {
   existing: { label: "이미 등록됨", cls: "border border-line bg-bg text-mute" },
   dup: STATUS.dup,
 };
-const EV_EDIT_FIELDS: EventField[] = ["show", "title", "start", "end"];
+const EV_EDIT_FIELDS: EventField[] = ["show", "title", "start", "end", "link"];
 type Filter = "all" | "error" | "new" | "existing" | "warn";
 const FILTERS: [Filter, string][] = [["all", "전체"], ["error", "오류만"], ["new", "신규"], ["existing", "기존 데이터"], ["warn", "경고"]];
 const EDIT_FIELDS: RowField[] = ["title", "venue", "start", "end", "date", "time", "actor", "role", "link", "genre", "age", "run"];
@@ -61,7 +61,7 @@ export default function ImportAdmin({ shows, events = [] }: { shows: Show[]; eve
   const [editing, setEditing] = useState<number | null>(null);
   const [allowErrors, setAllowErrors] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [result, setResult] = useState<{ r: ImportResult; registered: number; registeredEvents: number; artReport?: ArtReport[]; skipped: { row: number; title: string; date: string; time: string; actor: string; reason: string }[]; file: string } | null>(null);
+  const [result, setResult] = useState<{ r: ImportResult; registered: number; registeredEvents: number; sentLinks: number; artReport?: ArtReport[]; skipped: { row: number; title: string; date: string; time: string; actor: string; reason: string }[]; file: string } | null>(null);
   const [logs, setLogs] = useState<ImportLog[]>([]);
   const [logsMissing, setLogsMissing] = useState(false);
   const [openLog, setOpenLog] = useState<string | null>(null);
@@ -174,8 +174,8 @@ export default function ImportAdmin({ shows, events = [] }: { shows: Show[]; eve
   const c = analysis?.counts;
   const ec = evAnalysis?.counts;
   const totalErrors = (c?.errors ?? 0) + (ec?.errors ?? 0);
-  const newSessions = c?.newSessions ?? 0, newEvents = ec?.newEvents ?? 0;
-  const needUpdate = newSessions === 0 && newEvents === 0 && !(updateCast && (c?.existingRows ?? 0) > 0);
+  const newSessions = c?.newSessions ?? 0, newEvents = ec?.newEvents ?? 0, linkFills = ec?.linkFills ?? 0;
+  const needUpdate = newSessions === 0 && newEvents === 0 && linkFills === 0 && !(updateCast && (c?.existingRows ?? 0) > 0);
   const errorBlock = totalErrors > 0 && !allowErrors;
   // 포스터·색을 예약한 공연만 모아요(예약이 없는 공연은 기존 포스터·색을 그대로 둬요).
   const artItems = (analysis?.groups ?? []).filter((g) => artChanges(art[g.key])).map((g) => ({ title: g.title, showId: g.mode === "existing" ? g.existingId : null, draft: art[g.key] }));
@@ -199,7 +199,7 @@ export default function ImportAdmin({ shows, events = [] }: { shows: Show[]; eve
     setBusy(false);
     if (ok && (res || artItems.length)) {
       const zero: ImportResult = { log_id: "", new_shows: 0, existing_shows: 0, new_sessions: 0, existing_sessions: 0, updated_casts: 0, new_roles: 0, new_actors: 0, link_events: 0 } as ImportResult;
-      setResult({ r: res ?? zero, registered: rpcReady ? payload.registrableRows : 0, registeredEvents: rpcReady ? payload.registrableEvents : 0, artReport, skipped: payload.skipped, file: meta?.name ?? evMeta?.name ?? "" });
+      setResult({ r: res ?? zero, registered: rpcReady ? payload.registrableRows : 0, registeredEvents: rpcReady ? payload.registrableEvents : 0, sentLinks: rpcReady ? payload.events.filter((x) => x.link).length : 0, artReport, skipped: payload.skipped, file: meta?.name ?? evMeta?.name ?? "" });
       reset(); void loadLogs();
     }
   };
@@ -256,10 +256,13 @@ export default function ImportAdmin({ shows, events = [] }: { shows: Show[]; eve
           <div data-testid="import-result">
             <p className="mb-2 flex items-center gap-1 text-sm font-medium"><CheckCircle2 size={16} className="text-brand" aria-hidden />{result.file} — 등록을 마쳤어요.</p>
             <dl className="grid grid-cols-2 gap-2 text-sm sm:grid-cols-4">
-              {([["신규 공연", result.r.new_shows], ["신규 회차", result.r.new_sessions], ["기존 공연(회차만 추가)", result.r.existing_shows], ["기존 회차(건드리지 않음)", result.r.existing_sessions], ["새 배역", result.r.new_roles], ["새 배우", result.r.new_actors], ["캐스팅 변경", result.r.updated_casts], ["링크 이벤트 생성", result.r.link_events], ["신규 이벤트", result.r.new_events ?? 0], ["이미 있던 이벤트(건너뜀)", result.r.existing_events ?? 0]] as [string, number][]).map(([k, v]) => (
+              {([["신규 공연", result.r.new_shows], ["신규 회차", result.r.new_sessions], ["기존 공연(회차만 추가)", result.r.existing_shows], ["기존 회차(건드리지 않음)", result.r.existing_sessions], ["새 배역", result.r.new_roles], ["새 배우", result.r.new_actors], ["캐스팅 변경", result.r.updated_casts], ["링크 이벤트 생성", result.r.link_events], ["신규 이벤트", result.r.new_events ?? 0], ["이미 있던 이벤트(건너뜀)", result.r.existing_events ?? 0], ...(result.r.event_links !== undefined ? [["공지 링크와 함께 등록", result.r.event_links], ["빈 공지 링크 채움", result.r.filled_links ?? 0]] as [string, number][] : [])] as [string, number][]).map(([k, v]) => (
                 <div key={k} className="rounded-lg border border-line p-2"><dt className="text-xs text-mute">{k}</dt><dd className="text-lg font-bold">{v}</dd></div>
               ))}
             </dl>
+            {result.sentLinks > 0 && result.r.event_links === undefined && result.r.log_id && (
+              <p role="alert" data-testid="link-migration-warning" className="mt-2 flex items-start gap-2 rounded-lg border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-950/30 dark:text-red-300"><AlertTriangle size={16} className="mt-0.5 shrink-0" aria-hidden />이벤트는 등록됐지만 공지 링크는 저장되지 않았어요. DB에 0019_event_link_import.sql 이 아직 적용되지 않았어요. SQL Editor에서 실행한 뒤 같은 이벤트 시트를 다시 붙여넣으면 비어 있는 링크만 채워져요.</p>
+            )}
             <p className="mt-2 text-sm" data-testid="result-rows">성공 처리 <b>{result.registered + result.registeredEvents}</b>행{result.registeredEvents ? <> (이벤트 {result.registeredEvents}행 포함)</> : null} · 등록하지 않은 행 <b>{result.skipped.length}</b>행</p>
             <p className="mt-1 text-sm">등록하지 않은 행 <b data-testid="skipped-count">{result.skipped.length}</b>개{result.skipped.length ? "의 사유:" : "."}</p>
             {result.skipped.length > 0 && <SkippedList items={result.skipped} />}
@@ -346,7 +349,7 @@ export default function ImportAdmin({ shows, events = [] }: { shows: Show[]; eve
             <div className="mt-4" data-testid="event-preview">
               <h3 className="text-sm font-bold">이벤트 미리보기</h3>
               <div className="mt-2 grid grid-cols-2 gap-2 text-center sm:grid-cols-5" data-testid="event-summary">
-                {([["신규 이벤트", ec.newEvents, ""], ["이벤트가 붙는 공연", ec.shows, ""], ["이미 등록됨(건너뜀)", ec.existing + ec.dups, ""], ["오류 행", ec.errors, ec.errors ? "text-red-600" : ""], ["확인 필요(경고)", ec.warnRows, ec.warnRows ? "text-gold" : ""]] as [string, number, string][]).map(([k, v, cls]) => (
+                {([["신규 이벤트", ec.newEvents, ""], ["이벤트가 붙는 공연", ec.shows, ""], ["이미 등록됨(건너뜀)", ec.existing + ec.dups, ""], ["오류 행", ec.errors, ec.errors ? "text-red-600" : ""], ["확인 필요(경고)", ec.warnRows, ec.warnRows ? "text-gold" : ""], ...(ec.linkFills ? [["빈 공지 링크 채움", ec.linkFills, ""]] as [string, number, string][] : [])] as [string, number, string][]).map(([k, v, cls]) => (
                   <div key={k} className="rounded-lg border border-line p-2"><div className="text-[11px] text-mute">{k}</div><div className={`text-lg font-bold ${cls}`}>{v}</div></div>
                 ))}
               </div>
@@ -366,11 +369,11 @@ export default function ImportAdmin({ shows, events = [] }: { shows: Show[]; eve
                             {isHex6(g.color) ? <><span aria-hidden className="inline-block h-3 w-3 rounded-full border border-line" style={{ background: g.color }} />공연 색 {g.color}</> : "공연 색은 등록할 때 자동 배정돼요"}
                           </span>
                         )}
-                        <span className="text-xs text-mute">신규 {g.newEvents}{g.existingEvents ? ` · 이미 등록 ${g.existingEvents}` : ""}{g.errorRows ? ` · 오류 ${g.errorRows}행` : ""}</span>
+                        <span className="text-xs text-mute">신규 {g.newEvents}{g.existingEvents ? ` · 이미 등록 ${g.existingEvents}` : ""}{list.some((r) => r.fillLink) ? ` · 링크 채움 ${list.filter((r) => r.fillLink).length}` : ""}{g.errorRows ? ` · 오류 ${g.errorRows}행` : ""}</span>
                       </div>
                       <div className="overflow-x-auto">
-                        <table className="w-full min-w-[640px] text-left text-sm">
-                          <thead className="text-xs text-mute"><tr>{["행", "이벤트명", "시작일", "종료일", "상태", "안내", ""].map((h) => <th key={h} className="px-2 py-1.5 font-medium">{h}</th>)}</tr></thead>
+                        <table className="w-full min-w-[760px] text-left text-sm">
+                          <thead className="text-xs text-mute"><tr>{["행", "이벤트명", "시작일", "종료일", "공지 링크", "상태", "안내", ""].map((h) => <th key={h} className="px-2 py-1.5 font-medium">{h}</th>)}</tr></thead>
                           <tbody>{list.map((r) => <EventPreviewRow key={r.id} r={r} onEditToggle={() => setEvEditing(evEditing === r.id ? null : r.id)} editing={evEditing === r.id} onExclude={() => toggleEvExclude(r.id)} />)}</tbody>
                         </table>
                       </div>
@@ -393,7 +396,7 @@ export default function ImportAdmin({ shows, events = [] }: { shows: Show[]; eve
               <div role="alertdialog" aria-label="최종 확인" data-testid="confirm-box" className="rounded-lg border border-brand bg-hit p-3 text-sm">
                 <p className="font-bold text-brand">이대로 등록할까요?</p>
                 {artItems.length > 0 && <p className="mt-1" data-testid="confirm-art">포스터·색상 저장: {artItems.map((x) => `${x.title}(${[x.draft.file || x.draft.url ? `${x.showId ? "포스터 교체/등록" : "포스터"}${x.draft.url ? "(이미지 주소)" : ""}` : x.draft.removePoster ? "포스터 삭제" : "", x.draft.color === undefined ? "" : x.draft.color ? "색 변경" : "색 자동 배정"].filter(Boolean).join("·")})`).join(", ")} — 예약하지 않은 공연의 포스터·색은 그대로예요.</p>}
-                <p className="mt-1">{c ? <>신규 공연 <b>{c.newShows}</b>개 · 신규 회차 <b>{c.newSessions}</b>개 · 배우 배정 <b>{c.assignments}</b>건{c.existingSessions ? <> · 기존 회차 <b>{c.existingSessions}</b>개{updateCast ? "(캐스팅을 엑셀대로 변경)" : "(그대로 유지)"}</> : null}</> : null}{ec ? <>{c ? " · " : ""}신규 이벤트 <b>{ec.newEvents}</b>개{ec.existing + ec.dups ? <> (이미 있는 이벤트 <b>{ec.existing + ec.dups}</b>개는 건너뜀)</> : null}</> : null}{totalErrors ? <> · 오류로 등록하지 않는 행 <b>{totalErrors}</b>개</> : null}</p>
+                <p className="mt-1">{c ? <>신규 공연 <b>{c.newShows}</b>개 · 신규 회차 <b>{c.newSessions}</b>개 · 배우 배정 <b>{c.assignments}</b>건{c.existingSessions ? <> · 기존 회차 <b>{c.existingSessions}</b>개{updateCast ? "(캐스팅을 엑셀대로 변경)" : "(그대로 유지)"}</> : null}</> : null}{ec ? <>{c ? " · " : ""}신규 이벤트 <b>{ec.newEvents}</b>개{ec.linkFills ? <> · 기존 이벤트 빈 공지 링크 채움 <b>{ec.linkFills}</b>개</> : null}{ec.existing + ec.dups ? <> (이미 있는 이벤트 <b>{ec.existing + ec.dups}</b>개는 그대로 둠)</> : null}</> : null}{totalErrors ? <> · 오류로 등록하지 않는 행 <b>{totalErrors}</b>개</> : null}</p>
                 <div className="mt-2 flex gap-2">
                   <button onClick={() => void register()} disabled={busy} className={btn} data-testid="register-confirm">확인, 등록할게요</button>
                   <button onClick={() => setConfirming(false)} className={ghost} data-testid="register-cancel">취소</button>
@@ -511,9 +514,10 @@ function EventPreviewRow({ r, editing, onEditToggle, onExclude }: { r: AnalyzedE
   return (
     <tr data-testid="event-row" data-status={r.status} className={`border-t border-line align-top ${bad ? "bg-red-50 dark:bg-red-950/30" : ""}`}>
       <td className="px-2 py-1.5 text-xs text-mute">{r.n}</td>
-      <td className="px-2 py-1.5">{r.raw.title}</td>
+      <td className="min-w-[96px] break-keep px-2 py-1.5">{r.raw.title}</td>
       <td className="px-2 py-1.5 whitespace-nowrap">{r.start || r.raw.start}</td>
       <td className="px-2 py-1.5 whitespace-nowrap">{r.end || r.raw.end}</td>
+      <td className="max-w-[160px] px-2 py-1.5 text-xs" data-testid="event-row-link">{r.raw.link ? (/^https?:\/\//i.test(r.raw.link.trim()) ? <a href={r.raw.link.trim()} target="_blank" rel="noopener noreferrer" title={r.raw.link} className="block truncate text-brand underline">{r.raw.link}</a> : <span className="block truncate" title={r.raw.link}>{r.raw.link}</span>) : <span className="text-mute">없음</span>}</td>
       <td className="px-2 py-1.5"><span className={`whitespace-nowrap rounded-full px-2 py-0.5 text-[11px] font-bold ${st.cls}`}>{st.label}</span></td>
       <td className="min-w-[200px] px-2 py-1.5 text-xs">
         {r.errors.map((m, i) => <p key={`e${i}`} className="text-red-600">⚠ {m}</p>)}
@@ -533,9 +537,9 @@ function EventRowEditor({ r, onEdit, onClose }: { r: AnalyzedEvent; onEdit: (id:
     <div className="border-t border-line bg-bg px-3 py-3" data-testid="event-editor">
       <p className="mb-2 flex items-center justify-between text-xs font-medium text-mute"><span>이벤트 {r.n}행 수정 — 고치면 바로 다시 검사해요</span><button onClick={onClose} className="rounded border border-line px-2 py-1">닫기</button></p>
       {r.errors.map((m, i) => <p key={i} className="mb-1 text-xs text-red-600">⚠ {m}</p>)}
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
         {EV_EDIT_FIELDS.map((f) => (
-          <label key={f} className="block text-[11px] text-mute">{EVENT_FIELD_LABEL[f]}
+          <label key={f} className={`block text-[11px] text-mute ${f === "link" ? "col-span-2 sm:col-span-1" : ""}`}>{EVENT_FIELD_LABEL[f]}{f === "link" ? " (선택)" : ""}
             <input value={r.raw[f]} onChange={(e) => onEdit(r.id, f, e.target.value)} className={`${inp} mt-0.5 !py-1.5`} data-testid={`ev-edit-${f}`} />
           </label>
         ))}

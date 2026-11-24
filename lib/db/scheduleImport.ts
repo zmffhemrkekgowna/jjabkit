@@ -7,6 +7,8 @@ export interface ImportResult {
   updated_casts: number; new_roles: number; new_actors: number; link_events: number;
   /** 0015 이후 함수만 돌려줘요(그 전에는 없어서 0으로 봐요) */
   new_events?: number; existing_events?: number;
+  /** 0019 이후 함수만 돌려줘요: 공지 링크와 함께 새로 만든 이벤트 수 / 빈 공지 링크를 채운 기존 이벤트 수. 없으면 0019가 아직 적용되지 않은 DB예요. */
+  event_links?: number; filled_links?: number;
 }
 export interface ImportLog {
   id: string; created_at: string; file_name: string; file_hash: string; total_rows: number; error_rows: number;
