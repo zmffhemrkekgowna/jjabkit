@@ -95,7 +95,7 @@ export default function ShowList({ shows }: { shows: Show[] }) {
 
   const [sort, setSort] = useState<SortKey>(DEFAULT_SORT);
   const rows = useMemo(() => {
-    const found = searchShows(shows, q).filter(({ show: s }) => (cat === "전체" || s.genre === cat) && (st === "전체" || (st === "closing" ? isClosingSoon(s, today) : statusOf(s, today) === st)));
+    const found = searchShows(shows, q).filter(({ show: s }) => (cat === "전체" || s.genre === cat) && (q.trim() !== "" || st === "전체" || (st === "closing" ? isClosingSoon(s, today) : statusOf(s, today) === st)));
     return sortShows(found, sort);
   }, [shows, q, cat, st, sort, today]);
   const validIds = useMemo(() => new Set(shows.map((s) => s.id)), [shows]);
