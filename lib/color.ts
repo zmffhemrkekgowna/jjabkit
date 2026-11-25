@@ -13,6 +13,7 @@ export function readableOn(hex: string): string {
 export const EVENT_COLORS: { name: string; hex: string }[] = [
   { name: "빨강", hex: "#dc2626" }, { name: "주황", hex: "#ea580c" }, { name: "노랑", hex: "#facc15" }, { name: "초록", hex: "#16a34a" },
   { name: "파랑", hex: "#2563eb" }, { name: "보라", hex: "#7c3aed" }, { name: "분홍", hex: "#db2777" }, { name: "회색", hex: "#6b7280" },
+  { name: "검정", hex: "#1b1a22" },
 ];
 
 /** 글자색을 흰색/검정 중 대비가 더 큰 쪽으로 골라요(WCAG 대비비 기준이라 어떤 바탕색에서도 최소 약 4.6:1). 이벤트 막대의 readableOn과 달리 공연 카드에만 써요. */

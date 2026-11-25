@@ -353,7 +353,7 @@ export default function ImportAdmin({ shows, events = [] }: { shows: Show[]; eve
                   <div key={k} className="rounded-lg border border-line p-2"><div className="text-[11px] text-mute">{k}</div><div className={`text-lg font-bold ${cls}`}>{v}</div></div>
                 ))}
               </div>
-              <p className="mt-1 text-xs text-mute">전체 {ec.total}행{ec.dups ? ` · 파일 내 중복 ${ec.dups}행` : ""}{ec.excluded ? ` · 제외 ${ec.excluded}행` : ""} · 이벤트 기간은 공연 기간과 별개이고, 기간이 겹쳐도 등록돼요. 이벤트 색은 공연 색을 따라가요.</p>
+              <p className="mt-1 text-xs text-mute">전체 {ec.total}행{ec.dups ? ` · 파일 내 중복 ${ec.dups}행` : ""}{ec.excluded ? ` · 제외 ${ec.excluded}행` : ""} · 이벤트 기간은 공연 기간과 별개이고, 기간이 겹쳐도 등록돼요. 이벤트 색은 이벤트 이름에 따라 자동으로 정해지고(같은 공연의 가까운 날짜 이벤트와 겹치지 않게), '공연 관리'에서 직접 바꿀 수 있어요.</p>
               <div className="mt-3 space-y-4">
                 {evAnalysis.groups.map((g) => {
                   const list = evAnalysis.rows.filter((r) => g.rowIds.includes(r.id));

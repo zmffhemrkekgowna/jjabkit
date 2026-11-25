@@ -3,7 +3,8 @@
 import SlotCard from "./SlotCard";
 import { DOW, actorOf, castRows, addDays, fmtDate, matches, toKey, visibleOn, type ShowIndex } from "@/lib/casting";
 import type { EventItem } from "@/types/event";
-import { isHex6, readableOn } from "@/lib/color";
+import { readableOn } from "@/lib/color";
+import { eventColor } from "@/lib/eventColor";
 
 interface Props {
   idx: ShowIndex; cursor: Date; sel: Set<string>; only: boolean; today: string;
@@ -94,8 +95,8 @@ export default function MonthView({ idx, cursor, sel, only, today, events = [], 
                   <div className="pointer-events-none absolute inset-x-0 top-7">
                     {bars.map((b) => (
                       <button key={b.ev.id} onClick={() => onOpenEvent?.(b.ev)} aria-label={`이벤트 ${b.ev.title}, 자세히 보기`}
-                        style={{ top: `calc(${b.lane} * var(--lane))`, height: "calc(var(--lane) - 2px)", left: `calc(${b.col} / 7 * 100% + 1px)`, width: `calc(${b.span} / 7 * 100% - 2px)`, ...(isHex6(b.ev.color) ? { background: b.ev.color, color: readableOn(b.ev.color) } : {}) }}
-                        className={`pointer-events-auto absolute truncate ${isHex6(b.ev.color) ? "" : "bg-ink text-bg"} px-1 text-left text-[10px] font-bold leading-[calc(1.25rem-2px)] sm:px-1.5 sm:text-xs sm:leading-[calc(1.5rem-2px)] ${b.contLeft ? "rounded-l-none" : "rounded-l-md"} ${b.contRight ? "rounded-r-none" : "rounded-r-md"}`}>
+                        style={{ top: `calc(${b.lane} * var(--lane))`, height: "calc(var(--lane) - 2px)", left: `calc(${b.col} / 7 * 100% + 1px)`, width: `calc(${b.span} / 7 * 100% - 2px)`, background: eventColor(b.ev), color: readableOn(eventColor(b.ev)) }}
+                        className={`pointer-events-auto absolute truncate px-1 text-left text-[10px] font-bold leading-[calc(1.25rem-2px)] sm:px-1.5 sm:text-xs sm:leading-[calc(1.5rem-2px)] ${b.contLeft ? "rounded-l-none" : "rounded-l-md"} ${b.contRight ? "rounded-r-none" : "rounded-r-md"}`}>
                         {b.ev.title}
                       </button>
                     ))}

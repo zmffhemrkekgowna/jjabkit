@@ -8,8 +8,10 @@ export interface EventItem {
   linkUrl: string;
   /** 이 이벤트가 속한 공연. 이벤트는 공연의 '공연 관리' 화면에서만 만들어요. */
   showId: string;
-  /** 달력 막대 색 '#rrggbb' (없으면 '' = 기본색) */
+  /** 달력 막대 색 '#rrggbb' (관리자가 직접 고른 색. 없으면 '' = 자동 색) */
   color: string;
+  /** color가 비어 있을 때 화면에 쓰는 자동 색(lib/eventColor.ts의 assignEventColors가 붙임). DB에는 저장하지 않아요. */
+  autoColor?: string;
   createdAt: string;
   /**
    * 적용 범위. all: 공연의 모든 회차 · range: 시작일~종료일 사이의 회차(기존 이벤트는 모두 이것) · sessions: sessionKeys에 든 회차만.
