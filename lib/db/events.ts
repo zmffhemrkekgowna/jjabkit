@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { EventItem, EventScope } from "@/types/event";
 import { DbError, isMissingRelation } from "./errors";
+import { assignEventColors } from "@/lib/eventColor";
 
 // 표에는 body·place 칸이 남아 있지만(기본값 '') 더는 쓰지 않아요. 예전 데이터는 지우지 않고 그대로 둬요.
 const SELECT_BASE = "id, title, starts_on, ends_on, link_url, show_id, created_at";
@@ -33,7 +34,8 @@ export async function fetchEvents(db: SupabaseClient, limit = 500): Promise<Even
   if (error && /scope|session_keys/i.test(error.message) && !isMissingRelation(error, "events")) ({ data, error } = await q(SELECT_COLOR));
   if (error && /color/i.test(error.message) && !isMissingRelation(error, "events")) ({ data, error } = await q(SELECT_BASE));
   if (error) throw new DbError("이벤트", error, "events");
-  return ((data ?? []) as unknown as Row[]).map(toEvent).sort((a, b) => (a.startsOn || "9999").localeCompare(b.startsOn || "9999"));
+  // 색을 고르지 않은 이벤트에 화면용 자동 색을 붙여요(DB는 그대로). 모든 화면이 여기서 받아서 같은 색을 써요.
+  return assignEventColors(((data ?? []) as unknown as Row[]).map(toEvent)).sort((a, b) => (a.startsOn || "9999").localeCompare(b.startsOn || "9999"));
 }
 
 /** 이벤트 표가 아직 없는 DB(0004 전)는 빈 목록이에요. 그 밖의 조회 실패는 숨기지 않고 오류로 올려요(화면의 '다시 시도'가 떠요). */

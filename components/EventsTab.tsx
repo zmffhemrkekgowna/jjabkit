@@ -5,7 +5,7 @@ import type { Show } from "@/types/show";
 import type { ShowIndex } from "@/lib/casting";
 import type { EventItem } from "@/types/event";
 import { scopeText } from "@/lib/eventScope";
-import { isHex6 } from "@/lib/color";
+import { eventColor } from "@/lib/eventColor";
 
 export default function EventsTab({ show, idx, events = [], onOpen, onOpenEvent }: { show: Show; idx: ShowIndex; events?: EventItem[]; onOpen: (date: string) => void; onOpenEvent?: (e: EventItem) => void }) {
   return (
@@ -17,7 +17,7 @@ export default function EventsTab({ show, idx, events = [], onOpen, onOpenEvent 
           {events.map((e) => (
             <li key={e.id}>
               <button onClick={() => onOpenEvent?.(e)} className="block w-full rounded-2xl border border-line bg-card p-3 text-left hover:border-brand">
-                <span className="flex items-center gap-1.5 text-sm font-bold">{isHex6(e.color) && <span aria-hidden className="inline-block h-3 w-3 shrink-0 rounded-full border border-line" style={{ background: e.color }} />}{e.title}</span>
+                <span className="flex items-center gap-1.5 text-sm font-bold"><span aria-hidden className="inline-block h-3 w-3 shrink-0 rounded-full border border-line" style={{ background: eventColor(e) }} />{e.title}</span>
                 <span className="mt-1 flex items-center gap-1 text-xs text-mute"><Calendar size={12} aria-hidden />{scopeText(e)}</span>
               </button>
             </li>

@@ -14,6 +14,7 @@ import { weekBars } from "@/components/casting/MonthView";
 import SlotCard from "@/components/casting/SlotCard";
 import { showColor } from "@/lib/mySchedule";
 import { isHex6, readableOn } from "@/lib/color";
+import { eventColor } from "@/lib/eventColor";
 import { displayEvents } from "@/lib/eventScope";
 import { planRepeat } from "@/lib/repeatSessions";
 import { Fld, Sec, btn, friendly, ghost, iconBtn, inp, showToast, undoAction, type Notify, type Run } from "./shared";
@@ -244,8 +245,8 @@ function SessionsCalendar({ show, events, cursor, sel, onSel, onMonth }: { show:
                   <div className="pointer-events-none absolute inset-x-0 top-5 z-20">
                     {bars.map((b) => (
                       <span key={b.ev.id} role="note" title={`${b.ev.title} (${b.ev.startsOn}${b.ev.endsOn ? ` ~ ${b.ev.endsOn}` : ""})`} aria-label={`이벤트 ${b.ev.title}`}
-                        style={{ top: `calc(${b.lane} * var(--lane))`, height: "calc(var(--lane) - 2px)", left: `calc(${b.col} / 7 * 100% + 1px)`, width: `calc(${b.span} / 7 * 100% - 2px)`, ...(isHex6(b.ev.color) ? { background: b.ev.color, color: readableOn(b.ev.color) } : {}) }}
-                        className={`absolute truncate ${isHex6(b.ev.color) ? "" : "bg-ink text-bg"} px-1 text-left text-[10px] font-bold leading-[calc(1.25rem-2px)] sm:px-1.5 sm:text-xs sm:leading-[calc(1.5rem-2px)] ${b.contLeft ? "rounded-l-none" : "rounded-l-md"} ${b.contRight ? "rounded-r-none" : "rounded-r-md"}`}>
+                        style={{ top: `calc(${b.lane} * var(--lane))`, height: "calc(var(--lane) - 2px)", left: `calc(${b.col} / 7 * 100% + 1px)`, width: `calc(${b.span} / 7 * 100% - 2px)`, background: eventColor(b.ev), color: readableOn(eventColor(b.ev)) }}
+                        className={`absolute truncate px-1 text-left text-[10px] font-bold leading-[calc(1.25rem-2px)] sm:px-1.5 sm:text-xs sm:leading-[calc(1.5rem-2px)] ${b.contLeft ? "rounded-l-none" : "rounded-l-md"} ${b.contRight ? "rounded-r-none" : "rounded-r-md"}`}>
                         {b.ev.title}
                       </span>
                     ))}
