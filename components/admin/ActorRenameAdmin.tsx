@@ -8,6 +8,7 @@ import { listRenames, renameActor, undoActorRename, type RenameLog, type RenameR
 import { STATUS_LABEL, statusOf } from "@/lib/status";
 import { useTodayKST } from "@/lib/useToday";
 import { Fld, Sec, btn, ghost, inp, useAdminRun } from "./shared";
+import { LoadingInline } from "@/components/ui/Loading";
 
 const statusLabel = (s: { start: string; end: string }, today: string) => { const st = statusOf(s, today); return st ? STATUS_LABEL[st] : "날짜 미정"; };
 const fmt = (iso: string) => new Date(iso).toLocaleString("ko-KR", { timeZone: "Asia/Seoul", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hour12: false });
@@ -140,7 +141,7 @@ export default function ActorRenameAdmin({ shows }: { shows: Show[] }) {
       </Sec>
 
       <Sec title="변경 기록">
-        {logs === undefined && <p className="text-sm text-mute">불러오는 중…</p>}
+        {logs === undefined && <LoadingInline />}
         {logs === null && <p className="text-sm text-mute" data-testid="log-missing">DB에 0017_actor_rename.sql 이 아직 적용되지 않았어요. Supabase SQL Editor에서 실행하면 이름 변경과 기록이 켜져요.</p>}
         {logs && logs.length === 0 && <p className="text-sm text-mute" data-testid="log-empty">아직 바꾼 기록이 없어요.</p>}
         {logs && logs.length > 0 && (

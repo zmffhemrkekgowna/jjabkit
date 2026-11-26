@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { RefreshCw } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { ghost } from "./shared";
+import { LoadingInline } from "@/components/ui/Loading";
 
 interface Stats {
   today_date: string; today: number; yesterday: number; month: number; total: number;
@@ -87,7 +88,7 @@ export default function StatsAdmin() {
       </div>
 
       {err && <p role="alert" className="rounded-xl border border-brand bg-hit p-3 text-sm">{err}</p>}
-      {loading && !stats && !err && <p className="text-sm text-mute" aria-live="polite">불러오는 중…</p>}
+      {loading && !stats && !err && <LoadingInline />}
 
       {stats && (
         <>
