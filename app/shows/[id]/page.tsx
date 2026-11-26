@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import ShowDetail from "@/components/ShowDetail";
 import { fetchShow } from "@/lib/db/shows";
 import { fetchEventsSafe } from "@/lib/db/events";
-import { requirePublicClient } from "@/lib/supabase/public";
+import { readPublic } from "@/lib/supabase/public";
 import { showMetadata } from "@/lib/shareMeta";
 import { usableEvent } from "@/lib/eventScope";
 
@@ -17,7 +17,7 @@ export function generateStaticParams() { return []; }
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /** 같은 요청 안에서 공연을 한 번만 불러와요(화면과 링크 미리보기가 함께 써요). */
-const getShow = cache(async (id: string) => fetchShow(requirePublicClient(), id));
+const getShow = cache(async (id: string) => readPublic((db) => fetchShow(db, id), null));
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
   const { id } = await params;
@@ -32,7 +32,7 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
 export default async function ShowPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   if (!UUID.test(id)) notFound();
-  const [show, events] = await Promise.all([getShow(id), fetchEventsSafe(requirePublicClient())]);
+  const [show, events] = await Promise.all([getShow(id), readPublic(fetchEventsSafe, [])]);
   if (!show) notFound();
   // 이 공연에 연결된 이벤트만, 시작하는 날 순서로
   const mine = events.filter((e) => e.showId === id && usableEvent(e)).sort((a, b) => (a.startsOn || "").localeCompare(b.startsOn || "") || a.createdAt.localeCompare(b.createdAt));

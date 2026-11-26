@@ -12,9 +12,24 @@ export function createPublicClient(): SupabaseClient | null {
   return createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false } });
 }
 
+const MISSING_ENV = "Supabase 환경변수(NEXT_PUBLIC_SUPABASE_URL / NEXT_PUBLIC_SUPABASE_ANON_KEY)가 없어요.";
+const isBuild = () => process.env.NEXT_PHASE === "phase-production-build";
+
 /** 꼭 DB가 있어야 하는 화면용. 환경변수가 없으면 분명한 오류를 내요. */
 export function requirePublicClient(): SupabaseClient {
   const db = createPublicClient();
-  if (!db) throw new Error("Supabase 환경변수(NEXT_PUBLIC_SUPABASE_URL / NEXT_PUBLIC_SUPABASE_ANON_KEY)가 없어요.");
+  if (!db) throw new Error(MISSING_ENV);
   return db;
+}
+
+/**
+ * 공개 데이터를 읽어요. 환경변수가 없는 빌드(예: 환경변수를 넣지 않은 Vercel 미리보기 배포)에서는
+ * 빌드가 실패하지 않도록 빈 값(fallback)으로 만들어 두고, 실제 방문 때 다시 만들어요(아래 revalidate).
+ * 실제 서비스 중(빌드가 아닐 때) 환경변수가 없으면 예전처럼 오류를 내요.
+ */
+export async function readPublic<T>(fn: (db: SupabaseClient) => Promise<T>, fallback: T): Promise<T> {
+  const db = createPublicClient();
+  if (db) return fn(db);
+  if (isBuild()) return fallback;
+  throw new Error(MISSING_ENV);
 }

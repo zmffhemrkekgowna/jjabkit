@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import TodayView from "@/components/TodayView";
 import { fetchShows } from "@/lib/db/shows";
 import { fetchEventsSafe } from "@/lib/db/events";
-import { requirePublicClient } from "@/lib/supabase/public";
+import { readPublic } from "@/lib/supabase/public";
 import { todayKST } from "@/lib/period";
 import { usableEvent } from "@/lib/eventScope";
 
@@ -11,9 +11,8 @@ export const revalidate = 300;
 export const metadata: Metadata = { title: "오늘의 공연 · JJabKit" };
 
 export default async function TodayPage() {
-  const db = requirePublicClient();
-  const shows = await fetchShows(db);
+  const shows = await readPublic(fetchShows, []);
   // 이벤트는 덧붙여 보여 주는 정보예요. 불러오지 못해도 공연·캐스트 화면은 그대로 떠야 해요.
-  const events = await fetchEventsSafe(db).then((l) => l.filter(usableEvent)).catch(() => []);
+  const events = await readPublic(fetchEventsSafe, []).then((l) => l.filter(usableEvent)).catch(() => []);
   return <TodayView shows={shows} events={events} serverToday={todayKST()} />;
 }
