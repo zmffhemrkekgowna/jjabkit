@@ -14,3 +14,10 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 @keyframes sheet-up { from { transform: translateY(100%); } to { transform: none; } }
 .sheet { animation: sheet-up 0.22s ease-out; }
 @media (prefers-reduced-motion: reduce) { .sheet { animation: none; } }
+/* 공통 로딩(components/ui/Loading.tsx): 버건디 원이 돌아요. 이미지 없이 CSS만 써요. */
+@keyframes jjk-spin { to { transform: rotate(360deg); } }
+@keyframes jjk-appear { to { opacity: 1; } }
+.jjk-spinner { border-radius: 9999px; border-style: solid; border-color: var(--hit); border-top-color: var(--brand); animation: jjk-spin 0.8s linear infinite; }
+/* 짧은 로딩(보통 페이지 이동 0.3초 안팎)에서 깜빡이지 않게 0.4초 뒤에 나타나요 */
+.jjk-delay { opacity: 0; animation: jjk-appear 0.2s ease-out 0.4s forwards; }
+@media (prefers-reduced-motion: reduce) { .jjk-spinner { animation-duration: 1.6s; } }
