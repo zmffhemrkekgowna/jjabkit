@@ -6,13 +6,15 @@ import { BookOpen } from "lucide-react";
 import ThemeToggle from "./ThemeToggle";
 import NoticeBell from "./NoticeBell";
 import type { Notice } from "@/types/notice";
+import { useIsAdmin } from "@/lib/useIsAdmin";
 
 /**
  * 맨 위 고정 막대. 관리자 화면 링크는 관리자로 로그인했을 때만 보여요.
  * (링크를 숨기는 건 화면 편의일 뿐이고, 접근 차단은 서버(middleware)와 DB(RLS)가 해요.)
  */
-export default function ModeBar({ isAdmin, notices }: { isAdmin: boolean; notices: Notice[] }) {
+export default function ModeBar({ notices }: { notices: Notice[] }) {
   const path = usePathname();
+  const isAdmin = useIsAdmin(); // 브라우저에서 확인(사용자 화면 캐시용)
   const here = path.startsWith("/admin") ? "admin" : path.startsWith("/my") ? "my" : "user";
   const tab = (on: boolean) => `whitespace-nowrap rounded-md px-2 py-1.5 text-[13px] font-medium min-[400px]:px-2.5 ${on ? "bg-brand text-onbrand" : "text-mute hover:text-brand"}`;
   /** 360px처럼 좁은 화면에서는 짧은 이름으로 보여요(이동 주소와 기능은 그대로, 읽어 주는 이름은 전체 이름). */

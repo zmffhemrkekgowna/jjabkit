@@ -2,7 +2,7 @@ import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import type { ReactNode } from "react";
 import { fetchPagesSafe } from "@/lib/db/pages";
-import { createClient } from "@/lib/supabase/server";
+import { createPublicClient } from "@/lib/supabase/public";
 import type { PageSlug } from "@/types/page";
 
 /** '## 소제목', '- 목록', 빈 줄 문단. 그 외는 글자 그대로(HTML 해석 없음). */
@@ -38,7 +38,6 @@ export function InfoView({ title, body, updatedAt, back = { href: "/", label: "�
 }
 
 export default async function InfoPage({ slug }: { slug: PageSlug }) {
-  const db = await createClient().catch(() => null);
-  const page = (await fetchPagesSafe(db))[slug];
+  const page = (await fetchPagesSafe(createPublicClient()))[slug];
   return <InfoView title={page.title} body={page.body} updatedAt={page.updatedAt} back={{ href: "/guide", label: "이용 안내" }} />;
 }

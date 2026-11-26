@@ -42,6 +42,8 @@ export async function middleware(request: NextRequest) {
   }
 }
 
+// 관리자 구역에서만 실행해요. (예전엔 모든 페이지 요청마다 실행돼 Vercel 사용량을 썼어요)
+// 사용자 화면은 로그인 정보를 읽지 않고(캐시), 브라우저의 Supabase 연결이 로그인 세션을 스스로 갱신해요.
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)"],
+  matcher: ["/admin", "/admin/:path*"],
 };

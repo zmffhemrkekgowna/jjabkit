@@ -25,12 +25,30 @@ export const showToast = (message: string, kind: "ok" | "error" = "ok", action?:
 };
 export const undoAction = (undo: () => Promise<unknown> | void): ToastAction => ({ label: "실행 취소", onClick: undo });
 
+/**
+ * 캐시해 둔 사용자 화면을 새로 만들게 해요(관리자 저장 직후 즉시 반영). 실패해도 저장 자체에는 영향이 없고,
+ * 이 경우에도 사용자 화면은 몇 분 안에 자동으로 새로 만들어져요(lib/cachePolicy.ts).
+ */
+export async function refreshPublicPages(): Promise<void> {
+  try {
+    const ctl = new AbortController();
+    const t = setTimeout(() => ctl.abort(), 5000);
+    await fetch("/api/revalidate", { method: "POST", credentials: "same-origin", signal: ctl.signal }).finally(() => clearTimeout(t));
+  } catch { /* 무시 */ }
+}
+
 export function useAdminRun() {
   const router = useRouter();
   const db = useMemo(() => createClient(), []);
   const [msg, setMsg] = useState("");
   const run: Run = async (fn, okMsg, undo) => {
-    try { const r = await fn(db); const ok = typeof okMsg === "function" ? okMsg(r) : okMsg; setMsg(ok ?? ""); if (ok) showToast(ok, "ok", undo ? undoAction(undo) : undefined); router.refresh(); return true; }
+    try {
+      const r = await fn(db); const ok = typeof okMsg === "function" ? okMsg(r) : okMsg; setMsg(ok ?? "");
+      // 실행 취소도 사용자 화면에 바로 반영되도록 감싸요.
+      const undoAndRefresh = undo ? async () => { await undo(); await refreshPublicPages(); router.refresh(); } : undefined;
+      if (ok) showToast(ok, "ok", undoAndRefresh ? undoAction(undoAndRefresh) : undefined);
+      await refreshPublicPages(); router.refresh(); return true;
+    }
     catch (e) { const m = friendly(e); setMsg(m); showToast(m, "error"); return false; }
   };
   return { db, run, msg, setMsg };

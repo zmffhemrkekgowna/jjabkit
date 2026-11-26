@@ -2,9 +2,9 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { ChevronRight } from "lucide-react";
 import { fetchSitePagesSafe } from "@/lib/db/pages";
-import { createClient } from "@/lib/supabase/server";
+import { createPublicClient } from "@/lib/supabase/public";
 
-export const dynamic = "force-dynamic"; // 관리자가 추가·수정·삭제한 내용이 바로 보이도록 캐시하지 않아요
+export const revalidate = 300; // 캐시해 두고, 관리자가 추가·수정·삭제하면 바로 새로 만들어요(/api/revalidate)
 export const metadata: Metadata = { title: "이용 안내 - JJabKit", description: "JJabKit(짭킷) 이용 안내와 소개, 개인정보처리방침, 문의" };
 
 /** 본문에서 목록에 보여줄 한 줄 미리보기. 소제목·목록 기호는 빼요. */
@@ -15,7 +15,7 @@ function previewOf(body: string): string {
 
 /** 사용자 화면의 '이용 안내' 목록. 관리자 화면의 안내 페이지와 같은 데이터(site_pages)를 읽어요. 읽기만 가능해요. */
 export default async function GuidePage() {
-  const db = await createClient().catch(() => null);
+  const db = createPublicClient();
   const { builtin, custom } = await fetchSitePagesSafe(db);
   const page = (s: "about" | "privacy" | "contact") => ({ href: `/${s}`, title: builtin[s].title, body: builtin[s].body });
   const asItem = (p: { slug: string; title: string; body: string }) => ({ href: `/guide/${p.slug}`, title: p.title, body: p.body });

@@ -1,10 +1,10 @@
 import ShowList from "@/components/ShowList";
 import { fetchShows } from "@/lib/db/shows";
-import { createClient } from "@/lib/supabase/server";
+import { requirePublicClient } from "@/lib/supabase/public";
 
-export const dynamic = "force-dynamic"; // 관리자에서 고친 내용이 바로 보이도록 캐시하지 않아요
+// 캐시해 두고 재사용해요. 관리자가 저장하면 바로 새로 만들어요(/api/revalidate). lib/cachePolicy.ts 참고
+export const revalidate = 300;
 
 export default async function HomePage() {
-  const db = await createClient();
-  return <ShowList shows={await fetchShows(db)} />;
+  return <ShowList shows={await fetchShows(requirePublicClient())} />;
 }

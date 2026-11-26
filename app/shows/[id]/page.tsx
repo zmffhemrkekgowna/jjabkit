@@ -4,17 +4,20 @@ import { notFound } from "next/navigation";
 import ShowDetail from "@/components/ShowDetail";
 import { fetchShow } from "@/lib/db/shows";
 import { fetchEventsSafe } from "@/lib/db/events";
-import { createClient } from "@/lib/supabase/server";
+import { requirePublicClient } from "@/lib/supabase/public";
 import { showMetadata } from "@/lib/shareMeta";
-import { validDate } from "@/lib/today";
 import { usableEvent } from "@/lib/eventScope";
 
-export const dynamic = "force-dynamic";
+// 공연별로 처음 열릴 때 만들어 두고 재사용해요. 관리자가 저장하면 바로 새로 만들어요(/api/revalidate). lib/cachePolicy.ts 참고
+export const revalidate = 300;
+
+/** 미리 만들어 두는 주소는 없고, 처음 열릴 때 만들어 캐시해요(이게 있어야 주소별 캐시가 켜져요). */
+export function generateStaticParams() { return []; }
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /** 같은 요청 안에서 공연을 한 번만 불러와요(화면과 링크 미리보기가 함께 써요). */
-const getShow = cache(async (id: string) => fetchShow(await createClient(), id));
+const getShow = cache(async (id: string) => fetchShow(requirePublicClient(), id));
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
   const { id } = await params;
@@ -22,17 +25,16 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   try { const show = await getShow(id); return show ? showMetadata(show) : {}; } catch { return {}; } // 실패해도 화면은 떠야 해요
 }
 
-export default async function ShowPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ d?: string | string[]; s?: string | string[] }> }) {
+/**
+ * 오늘 탭 등에서 온 회차 링크(?d=날짜&s=회차id)는 화면(ShowDetail)이 브라우저에서 읽어 그 회차 상세를 열어요.
+ * (서버가 주소 뒤 값을 읽으면 캐시를 못 해서, 이 부분만 브라우저로 옮겼어요)
+ */
+export default async function ShowPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const q = await searchParams;
   if (!UUID.test(id)) notFound();
-  const db = await createClient();
-  const [show, events] = await Promise.all([getShow(id), fetchEventsSafe(db)]);
+  const [show, events] = await Promise.all([getShow(id), fetchEventsSafe(requirePublicClient())]);
   if (!show) notFound();
   // 이 공연에 연결된 이벤트만, 시작하는 날 순서로
   const mine = events.filter((e) => e.showId === id && usableEvent(e)).sort((a, b) => (a.startsOn || "").localeCompare(b.startsOn || "") || a.createdAt.localeCompare(b.createdAt));
-  // 오늘 탭 등에서 온 회차 링크(?d=날짜&s=회차id): 그 회차 상세를 바로 열어요. 없는 회차면 무시해요.
-  const d = Array.isArray(q.d) ? q.d[0] : q.d, sid = Array.isArray(q.s) ? q.s[0] : q.s;
-  const hit = validDate(d) ? show.sessions.find((x) => x.date === d && (!sid || x.id === sid)) : undefined;
-  return <ShowDetail show={show} events={mine} initialOpen={hit ? { date: hit.date, sid: hit.id } : null} />;
+  return <ShowDetail show={show} events={mine} />;
 }

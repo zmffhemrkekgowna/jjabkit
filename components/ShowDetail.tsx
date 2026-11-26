@@ -19,6 +19,7 @@ import { ADSENSE_SLOT_DETAIL } from "@/lib/ads";
 import { recordRecent } from "@/lib/recent";
 import { isClosingSoon, statusOf } from "@/lib/status";
 import { useTodayKST } from "@/lib/useToday";
+import { validDate } from "@/lib/today";
 
 export default function ShowDetail({ show, events = [], initialOpen = null }: { show: Show; events?: EventItem[]; initialOpen?: { date: string; sid?: string } | null }) {
   const idx = useMemo(() => buildIndex(show), [show]);
@@ -29,6 +30,18 @@ export default function ShowDetail({ show, events = [], initialOpen = null }: { 
   const today = useTodayKST();
   const [evOpen, setEvOpen] = useState<EventItem | null>(null);
   useEffect(() => { recordRecent(show.id); }, [show.id]); // 최근 본 공연 (이 브라우저에만 저장)
+  // 회차 링크(?d=날짜&s=회차id)로 들어오면 그 회차 상세를 바로 열어요. 없는 회차면 무시해요.
+  // (페이지를 캐시하려고 서버 대신 브라우저에서 주소를 읽어요)
+  useEffect(() => {
+    if (initialOpen) return;
+    try {
+      const q = new URLSearchParams(window.location.search);
+      const d = q.get("d") ?? undefined, sid = q.get("s") ?? undefined;
+      if (!validDate(d)) return;
+      const hit = show.sessions.find((x) => x.date === d && (!sid || x.id === sid));
+      if (hit) setOpen({ date: hit.date, sid: hit.id });
+    } catch { /* 주소를 읽지 못하면 그냥 둬요 */ }
+  }, [show, initialOpen]);
 
   const toggle = (id: string) =>
     setSel((p) => { const n = new Set(p); if (n.has(id)) n.delete(id); else n.add(id); return n; });

@@ -2,14 +2,17 @@ import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 import { InfoView } from "@/components/InfoPage";
 import { fetchCustomPageSafe } from "@/lib/db/pages";
-import { createClient } from "@/lib/supabase/server";
+import { createPublicClient } from "@/lib/supabase/public";
 import { SLUG_RE, isBuiltinSlug } from "@/types/page";
 
-export const dynamic = "force-dynamic"; // 수정·삭제가 바로 반영되도록 캐시하지 않아요
+export const revalidate = 300; // 캐시해 두고, 수정·삭제하면 바로 새로 만들어요(/api/revalidate)
+
+/** 미리 만들어 두는 주소는 없고, 처음 열릴 때 만들어 캐시해요(이게 있어야 주소별 캐시가 켜져요). */
+export function generateStaticParams() { return []; }
 
 async function load(slug: string) {
   if (!SLUG_RE.test(slug)) return null;
-  const db = await createClient().catch(() => null);
+  const db = createPublicClient();
   return fetchCustomPageSafe(db, slug);
 }
 

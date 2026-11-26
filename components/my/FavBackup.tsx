@@ -8,6 +8,7 @@ import { useMySched } from "@/lib/mySched";
 import { linkRecords, useWatched, type WatchedRecord } from "@/lib/watched";
 import { buildFavBackup, favBackupFileName, parseFavBackup, type FavParse } from "@/lib/favBackup";
 import { downloadBlob } from "@/lib/download";
+import { useIsAdmin } from "@/lib/useIsAdmin";
 
 /** 복원 직전 상태. 복원이 실패하거나 마음이 바뀌면 이걸로 되돌려요(이 브라우저에만 저장). */
 interface Snapshot { shows: string[]; actors: string[]; sessions: string[]; watched: WatchedRecord[] }
@@ -20,7 +21,8 @@ const btn = "inline-flex items-center gap-1 rounded-lg bg-brand px-3 py-2 text-s
 const ghost = "inline-flex items-center gap-1 rounded-lg border border-line px-3 py-2 text-sm font-medium hover:border-brand";
 
 /** 데이터 백업 화면. 누구나: 내 하트(관심 공연·배우) 백업/복구. 관리자: 공연 데이터 백업 화면으로 가는 링크. */
-export default function FavBackup({ shows, isAdmin }: { shows: { id: string; title: string; sessions?: { id: string; date: string; time: string }[] }[]; isAdmin: boolean }) {
+export default function FavBackup({ shows }: { shows: { id: string; title: string; sessions?: { id: string; date: string; time: string }[] }[] }) {
+  const isAdmin = useIsAdmin(); // 관리자 전용 안내 표시용(브라우저에서 확인)
   const fav = useFavorites();
   const mine = useMySched();
   const watched = useWatched();
