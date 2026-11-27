@@ -9,7 +9,7 @@ import { showMetadata } from "@/lib/shareMeta";
 import { usableEvent } from "@/lib/eventScope";
 
 // 공연별로 처음 열릴 때 만들어 두고 재사용해요. 관리자가 저장하면 바로 새로 만들어요(/api/revalidate). lib/cachePolicy.ts 참고
-export const revalidate = 300;
+export const revalidate = 86400;
 
 /** 미리 만들어 두는 주소는 없고, 처음 열릴 때 만들어 캐시해요(이게 있어야 주소별 캐시가 켜져요). */
 export function generateStaticParams() { return []; }

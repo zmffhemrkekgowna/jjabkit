@@ -7,6 +7,7 @@ import ThemeToggle from "./ThemeToggle";
 import NoticeBell from "./NoticeBell";
 import type { Notice } from "@/types/notice";
 import { useIsAdmin } from "@/lib/useIsAdmin";
+import { flushPublicRefresh } from "@/lib/publicRefresh";
 
 /**
  * 맨 위 고정 막대. 관리자 화면 링크는 관리자로 로그인했을 때만 보여요.
@@ -15,6 +16,8 @@ import { useIsAdmin } from "@/lib/useIsAdmin";
 export default function ModeBar({ notices }: { notices: Notice[] }) {
   const path = usePathname();
   const isAdmin = useIsAdmin(); // 브라우저에서 확인(사용자 화면 캐시용)
+  // 관리자 화면에서 저장한 직후 사용자 화면으로 가면, 기다리던 사용자 화면 갱신을 바로 보내요.
+  const leaveAdmin = () => { if (path.startsWith("/admin")) void flushPublicRefresh(); };
   const here = path.startsWith("/admin") ? "admin" : path.startsWith("/my") ? "my" : "user";
   const tab = (on: boolean) => `whitespace-nowrap rounded-md px-2 py-1.5 text-[13px] font-medium min-[400px]:px-2.5 ${on ? "bg-brand text-onbrand" : "text-mute hover:text-brand"}`;
   /** 360px처럼 좁은 화면에서는 짧은 이름으로 보여요(이동 주소와 기능은 그대로, 읽어 주는 이름은 전체 이름). */
@@ -22,8 +25,8 @@ export default function ModeBar({ notices }: { notices: Notice[] }) {
   return (
     <div className="sticky top-0 z-40 flex h-11 items-center justify-between border-b border-line bg-card px-3 sm:px-4">
       <nav className="inline-flex rounded-lg border border-line p-0.5" aria-label="화면 전환">
-        <Link href="/" aria-current={here === "user" ? "page" : undefined} aria-label="사용자 화면" className={tab(here === "user")}>{label("사용자", "사용자 화면")}</Link>
-        <Link href="/my" aria-current={here === "my" ? "page" : undefined} aria-label="마이페이지" className={tab(here === "my")}>{label("마이", "마이페이지")}</Link>
+        <Link href="/" onClick={leaveAdmin} aria-current={here === "user" ? "page" : undefined} aria-label="사용자 화면" className={tab(here === "user")}>{label("사용자", "사용자 화면")}</Link>
+        <Link href="/my" onClick={leaveAdmin} aria-current={here === "my" ? "page" : undefined} aria-label="마이페이지" className={tab(here === "my")}>{label("마이", "마이페이지")}</Link>
         {isAdmin && <Link href="/admin" aria-current={here === "admin" ? "page" : undefined} aria-label="관리자 화면" className={tab(here === "admin")}>{label("관리자", "관리자 화면")}</Link>}
       </nav>
       <div className="flex shrink-0 items-center gap-1">

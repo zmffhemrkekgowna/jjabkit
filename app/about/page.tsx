@@ -10,7 +10,7 @@ export const metadata: Metadata = {
 };
 
 // 캐시해 두고 재사용해요. 관리자 화면에서 문구를 고치면 바로 새로 만들어요(/api/revalidate). lib/cachePolicy.ts 참고
-export const revalidate = 300;
+export const revalidate = 86400;
 
 /**
  * 소개 페이지. 검색엔진·광고 심사 로봇이 처음 받는 HTML에 본문이 바로 들어가도록,

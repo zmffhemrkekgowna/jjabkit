@@ -4,7 +4,7 @@ import { ChevronRight } from "lucide-react";
 import { fetchSitePagesSafe } from "@/lib/db/pages";
 import { createPublicClient } from "@/lib/supabase/public";
 
-export const revalidate = 300; // 캐시해 두고, 관리자가 추가·수정·삭제하면 바로 새로 만들어요(/api/revalidate)
+export const revalidate = 86400; // 캐시해 두고, 관리자가 추가·수정·삭제하면 바로 새로 만들어요(/api/revalidate)
 export const metadata: Metadata = { title: "이용 안내 - JJabKit", description: "JJabKit(짭킷) 이용 안내와 소개, 개인정보처리방침, 문의" };
 
 /** 본문에서 목록에 보여줄 한 줄 미리보기. 소제목·목록 기호는 빼요. */

@@ -7,7 +7,7 @@ import { todayKST } from "@/lib/period";
 import { usableEvent } from "@/lib/eventScope";
 
 // 캐시해 두고 재사용해요. 관리자가 저장하면 바로 새로 만들어요. 날짜는 화면(브라우저)이 한국 시간 기준으로 다시 맞춰요(useTodayKST).
-export const revalidate = 300;
+export const revalidate = 3600; // 1시간. 날짜가 바뀌는 화면이라 다른 화면보다 짧게 둬요
 export const metadata: Metadata = { title: "오늘의 공연 · JJabKit" };
 
 export default async function TodayPage() {

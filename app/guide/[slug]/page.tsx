@@ -5,7 +5,7 @@ import { fetchCustomPageSafe } from "@/lib/db/pages";
 import { createPublicClient } from "@/lib/supabase/public";
 import { SLUG_RE, isBuiltinSlug } from "@/types/page";
 
-export const revalidate = 300; // 캐시해 두고, 수정·삭제하면 바로 새로 만들어요(/api/revalidate)
+export const revalidate = 86400; // 캐시해 두고, 수정·삭제하면 바로 새로 만들어요(/api/revalidate)
 
 /** 미리 만들어 두는 주소는 없고, 처음 열릴 때 만들어 캐시해요(이게 있어야 주소별 캐시가 켜져요). */
 export function generateStaticParams() { return []; }

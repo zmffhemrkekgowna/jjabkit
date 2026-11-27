@@ -5,7 +5,9 @@ import { classifyPath, isBotUserAgent } from "@/lib/pageviews";
 export const dynamic = "force-dynamic";
 
 /**
- * 익명 페이지뷰 1회 기록. 응답은 항상 빈 204예요(통계 때문에 화면이 멈추거나 오류가 보이면 안 돼요).
+ * (예전 방식) 익명 페이지뷰 1회 기록. 지금은 화면(PageViewBeacon)이 Supabase에 바로 기록해서 이 주소를 쓰지 않아요.
+ * 배포 직후 예전 화면을 열어 둔 방문자를 위해서만 남겨 둬요.
+ * 응답은 항상 빈 204예요(통계 때문에 화면이 멈추거나 오류가 보이면 안 돼요).
  * 저장하는 값: 한국 날짜(DB가 계산), 페이지 유형, 공연 ID. 그 밖의 값(IP·UA·경로 원문·쿠키)은 저장하지 않아요.
  * 관리자 로그인 상태의 접속은 DB 함수가 걸러요(record_pageview가 is_admin()을 확인).
  */

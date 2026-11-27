@@ -1,17 +1,13 @@
-import AdminPanel from "@/components/admin/AdminPanel";
+import AdminData from "@/components/admin/AdminData";
 import { TAB_IDS } from "@/lib/adminTabs";
-import { fetchEventsSafe } from "@/lib/db/events";
-import { fetchPopupsSafe } from "@/lib/db/popups";
-import { fetchNoticesSafe } from "@/lib/db/notices";
-import { fetchSitePagesSafe } from "@/lib/db/pages";
-import { fetchShows } from "@/lib/db/shows";
-import { createClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
 
+/**
+ * 관리자 화면. 로그인·관리자 확인은 layout(서버)이 하고, 데이터는 브라우저가 직접 불러와요(AdminData).
+ * 서버는 데이터를 읽지 않아서 Vercel CPU를 거의 쓰지 않아요.
+ */
 export default async function AdminPage({ searchParams }: { searchParams: Promise<{ tab?: string }> }) {
   const { tab } = await searchParams;
-  const db = await createClient();
-  const [shows, notices, events, popups, pages] = await Promise.all([fetchShows(db), fetchNoticesSafe(db), fetchEventsSafe(db), fetchPopupsSafe(db), fetchSitePagesSafe(db)]);
-  return <AdminPanel shows={shows} notices={notices} events={events} popups={popups} pages={pages.builtin} customPages={pages.custom} initialTab={TAB_IDS.find((t) => t === tab) ?? "shows"} />;
+  return <AdminData initialTab={TAB_IDS.find((t) => t === tab) ?? "shows"} />;
 }

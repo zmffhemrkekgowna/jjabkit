@@ -4,6 +4,8 @@ import { useEffect, useMemo, useState, type InputHTMLAttributes, type ReactNode 
 import { useRouter } from "next/navigation";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/client";
+import { useAdminReload } from "./reload";
+import { refreshPublicPages, setAfterPublicRefresh } from "@/lib/publicRefresh";
 
 export const inp = "w-full rounded-lg border border-line bg-card px-3 py-2 text-sm";
 export const btn = "inline-flex items-center gap-1 rounded-lg bg-brand px-3 py-2 text-sm font-medium text-onbrand disabled:opacity-50";
@@ -11,7 +13,7 @@ export const ghost = "inline-flex min-h-[44px] items-center gap-1 sm:min-h-0 rou
 export const iconBtn = "inline-flex min-h-[44px] min-w-[44px] shrink-0 items-center justify-center rounded-lg border border-line p-2 text-mute hover:text-brand sm:min-h-0 sm:min-w-0";
 export const PALETTES = ["#1c2b4a,#3b1d4f,#8B1E3F", "#0d1b2a,#7a1f2b,#e0a526", "#240046,#7b2cbf,#ff6ec7", "#1b1b1b,#2f3e46,#84a98c", "#2d1e12,#5c4033,#b08968"];
 
-/** DB 작업을 실행하고, 성공하면 서버 데이터를 다시 불러와요(router.refresh). 실패하면 안내 문구를 띄워요. */
+/** DB 작업을 실행하고, 성공하면 관리자 데이터를 다시 불러와요(브라우저에서 직접). 실패하면 안내 문구를 띄워요. */
 /** undo를 주면 성공 알림에 '실행 취소' 버튼이 붙어요(몇 초 동안). */
 export type Run = (fn: (db: SupabaseClient) => Promise<unknown>, okMsg?: string | ((result: unknown) => string), undo?: () => Promise<unknown> | void) => Promise<boolean>;
 export type Notify = (msg: string) => void;
@@ -25,31 +27,31 @@ export const showToast = (message: string, kind: "ok" | "error" = "ok", action?:
 };
 export const undoAction = (undo: () => Promise<unknown> | void): ToastAction => ({ label: "실행 취소", onClick: undo });
 
-/**
- * 캐시해 둔 사용자 화면을 새로 만들게 해요(관리자 저장 직후 즉시 반영). 실패해도 저장 자체에는 영향이 없고,
- * 이 경우에도 사용자 화면은 몇 분 안에 자동으로 새로 만들어져요(lib/cachePolicy.ts).
- */
-export async function refreshPublicPages(): Promise<void> {
-  try {
-    const ctl = new AbortController();
-    const t = setTimeout(() => ctl.abort(), 5000);
-    await fetch("/api/revalidate", { method: "POST", credentials: "same-origin", signal: ctl.signal }).finally(() => clearTimeout(t));
-  } catch { /* 무시 */ }
-}
+export { refreshPublicPages, flushPublicRefresh } from "@/lib/publicRefresh";
 
 export function useAdminRun() {
   const router = useRouter();
+  const reloadData = useAdminReload();
   const db = useMemo(() => createClient(), []);
   const [msg, setMsg] = useState("");
+  // 저장 후 관리자 화면 데이터 다시 읽기: 브라우저가 직접 읽어요(서버 CPU 안 씀). 제공자 밖에서는 예전처럼 router.refresh.
+  const reload = () => { if (reloadData) void reloadData(); else router.refresh(); };
+  // 사용자 화면 갱신을 보낸 뒤에는 이 브라우저에 남아 있는 예전 사용자 화면(미리 받아 둔 페이지)을 비워요.
+  // 관리자 화면에서 사용자 화면으로 넘어갔을 때 바뀐 내용이 바로 보이게 하려는 거예요(저장 묶음마다 한 번).
+  useEffect(() => { setAfterPublicRefresh(() => router.refresh()); }, [router]);
   const run: Run = async (fn, okMsg, undo) => {
     try {
       const r = await fn(db); const ok = typeof okMsg === "function" ? okMsg(r) : okMsg; setMsg(ok ?? "");
-      // 실행 취소도 사용자 화면에 바로 반영되도록 감싸요.
-      const undoAndRefresh = undo ? async () => { await undo(); await refreshPublicPages(); router.refresh(); } : undefined;
+      // 실행 취소도 사용자 화면에 반영되도록 감싸요.
+      const undoAndRefresh = undo ? async () => { await undo(); refreshPublicPages(); reload(); } : undefined;
       if (ok) showToast(ok, "ok", undoAndRefresh ? undoAction(undoAndRefresh) : undefined);
-      await refreshPublicPages(); router.refresh(); return true;
+      refreshPublicPages(); reload(); return true;
     }
-    catch (e) { const m = friendly(e); setMsg(m); showToast(m, "error"); return false; }
+    catch (e) {
+      // 여러 건을 저장하다 중간에 실패해도 앞부분은 이미 저장됐을 수 있어서, 사용자 화면 갱신은 예약해 둬요.
+      refreshPublicPages();
+      const m = friendly(e); setMsg(m); showToast(m, "error"); return false;
+    }
   };
   return { db, run, msg, setMsg };
 }

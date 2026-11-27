@@ -20,8 +20,8 @@ export const metadata: Metadata = { metadataBase: siteUrl(), title: "JJabKit - �
 /** 소식·팝업은 보조 정보라서 조회가 실패해도 사이트 전체를 막지 않아요. 대신 서버 로그에 남겨요(DbError가 이미 남겨요). */
 const softFail = <T,>(fallback: T) => (e: unknown) => { console.error("[layout] 보조 데이터 조회 실패:", e instanceof Error ? e.message : e); return fallback; };
 
-// 사용자 화면은 캐시해 두고 재사용해요(관리자 저장 시 즉시 새로 만듦, 아니면 5분마다). lib/cachePolicy.ts 참고
-export const revalidate = 300;
+// 사용자 화면은 캐시해 두고 재사용해요(관리자 저장 시 즉시 새로 만듦, 아니면 하루마다). lib/cachePolicy.ts 참고
+export const revalidate = 86400;
 
 export default async function RootLayout({ children }: { children: ReactNode }) {
   // 소식·팝업은 서로 상관없어서 동시에 불러와요(순서대로 기다리면 그만큼 느려져요).

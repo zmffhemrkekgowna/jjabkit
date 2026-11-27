@@ -1,8 +1,11 @@
 /**
- * 사용자 화면 캐시 정책 (Vercel 사용량 절약)
+ * 사용자 화면 캐시 정책 (Vercel CPU 사용량 절약)
  * - 사용자 화면은 한 번 만들어 두고 여러 방문자에게 그대로 보여줘요. 방문할 때마다 서버가 새로 만들지 않아요.
- * - 관리자 화면에서 저장하면 /api/revalidate가 바로 새로 만들게 해요(즉시 반영).
+ * - 관리자 화면에서 저장하면 /api/revalidate가 바로 새로 만들게 해요(즉시 반영). 연달아 저장하면 마지막 저장 뒤 한 번만 불러요.
  * - 혹시 빠진 저장 경로가 있어도, 아래 시간(초)이 지나면 자동으로 새로 만들어요(안전장치).
- *   ※ Next.js 규칙상 각 page.tsx의 `export const revalidate`에는 숫자를 직접 적어야 해서, 값을 바꿀 땐 각 파일도 같이 바꿔요.
+ *   예전엔 5분이었는데, 방문 간격이 5분보다 길면 방문할 때마다 새로 만들게 돼 캐시 효과가 거의 없어서 하루로 늘렸어요.
+ *   오늘공연(/today)만 날짜가 바뀌는 화면이라 1시간이에요(날짜 자체는 브라우저가 한국 시간으로 다시 맞춰요).
+ *   ※ Next.js 규칙상 각 page.tsx/layout.tsx의 `export const revalidate`에는 숫자를 직접 적어야 해서, 값을 바꿀 땐 각 파일도 같이 바꿔요.
  */
-export const PUBLIC_REVALIDATE_SECONDS = 300;
+export const PUBLIC_REVALIDATE_SECONDS = 86400;
+export const TODAY_REVALIDATE_SECONDS = 3600;
